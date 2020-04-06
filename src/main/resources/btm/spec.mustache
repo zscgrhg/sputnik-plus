@@ -1,0 +1,53 @@
+{{#imports}}
+package {{pkg}}
+
+import spock.lang.Specification;
+import com.fasterxml.jackson.core.type.TypeReference;
+import org.codehaus.groovy.runtime.InvokerHelper
+{{/imports}}
+
+
+/**
+*   http://spockframework.org/
+*/
+class {{className}} extends Specification {
+void verify{{method}}() {
+given:
+{{subjectDecl}}
+{{#mockArgs}}
+    def argMockDefs=[:]
+{{/mockArgs}}
+{{#mockBlock}}
+    {{.}}
+{{/mockBlock}}
+when:
+{{actionDecl}}
+then:
+{{assertDecl}}
+}
+
+
+{{#Inputs}}
+    static final def INPUTS{{key}}= [
+    {{#value}}
+        {{ident}}{{tokens}}{{lineEnd}}
+    {{/value}}
+    ]
+{{/Inputs}}
+
+{{#Outputs}}
+    static final def OUTPUTS{{key}}= [
+    {{#value}}
+        {{ident}}{{tokens}}{{lineEnd}}
+    {{/value}}
+    ]
+{{/Outputs}}
+
+{{#Returned}}
+    static final def RETURNED{{key}}= {{#value}}
+        {{ident}}{{tokens}}{{lineEnd}}
+    {{/value}}
+{{/Returned}}
+}
+
+

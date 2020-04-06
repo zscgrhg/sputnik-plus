@@ -1,0 +1,19 @@
+RULE {{ruleId}}
+{{targetClass}}
+METHOD  {{targetMethod}}
+{{#helperClass}}
+    HELPER {{helperClass}}
+{{/helperClass}}
+{{location}}
+{{#hasBind}}
+    BIND
+{{/hasBind}}
+{{#bind}}
+    {{.}}
+{{/bind}}
+IF {{condition}}
+DO
+{{#action}}
+    {{.}}
+{{/action}}
+ENDRULE
