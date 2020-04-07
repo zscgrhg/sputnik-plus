@@ -4,6 +4,7 @@ import com.alibaba.ttl.TransmittableThreadLocal;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.zte.sputnik.builder.SpecWriter;
 import com.zte.sputnik.config.SputnikConfig;
+import com.zte.sputnik.instrument.MethodNames;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.parse.RefsInfo;
 import com.zte.sputnik.parse.SubjectManager;
@@ -118,7 +119,7 @@ public class InvocationContext {
         argsStack.push(argsCopy);
         PREVIOUS.set(invocation);
         map.put(invocation.id, invocation);
-        //MethodNames names = MethodNames.METHOD_NAMES_MAP.get(invocation.mid);
+        MethodNames names = MethodNames.METHOD_NAMES_MAP.get(invocation.mid);
         ParamModel p = new ParamModel();
         for (int i = 0; i < argsCopy.length; i++) {
             Object arg = argsCopy[i];
@@ -135,6 +136,7 @@ public class InvocationContext {
         p.argsGenericType = invocation.genericArgs;
         p.argsType = ParamModel.valuesTypeOf(argsCopy);
         invocation.argsType = p.argsType;
+        invocation.returnedType=names.getMethod().getReturnType();
         p.invocationId = invocation.id;
         p.name = ParamModel.INPUTS;
         traceWriter.write(p);
@@ -160,6 +162,8 @@ public class InvocationContext {
                 RefsInfo returnedRef = new RefsInfo();
                 returnedRef.type = RefsInfo.RefType.RETURNED;
                 returnedRef.returnedFrom = pop.id;
+                returnedRef.declaredType= MethodNames.METHOD_NAMES_MAP.get(pop.mid).method.getReturnType();
+                returnedRef.name="returnedBy"+pop.id;
                 parent.refs.put(returnedSourceObject, returnedRef);
             }
         }

@@ -58,6 +58,7 @@ public class Invocation {
     public Class clazzSource;
     public Class clazzThis;
     public Class[] argsType;
+    public Class returnedType;
     @JsonIgnore
     Invocation parent;
 

@@ -3,6 +3,7 @@ package com.zte.sputnik.builder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.zte.sputnik.config.SputnikConfig;
+import com.zte.sputnik.instrument.MethodNames;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.parse.RefsInfo;
 import com.zte.sputnik.trace.Invocation;
@@ -28,7 +29,25 @@ public class SpecFactory {
     private static final Logger LOGGER = LoggerBuilder.of(SpecFactory.class);
     public static final AtomicLong BUILD_INCR = new AtomicLong(1);
     public static final String FN = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
+    public static final String[] NAMES = IntStream.range((int) 'a', ((int) 'z')+1).mapToObj(x ->  Character.toString((char)x)).toArray(String[]::new);
     private static TraceReader reader = new TraceReaderImpl();
+
+
+    public static String argNameOf(int round){
+
+        StringBuilder builder=new StringBuilder("_");
+        while (round>0){
+            if(round>=16){
+                builder.append(NAMES[15]);
+            }else {
+                builder.append(NAMES[round-1]);
+            }
+            round=round>>4;
+        }
+
+        return builder.toString();
+    }
+
 
     @SneakyThrows
     public static SpecModel build(Long subjectInvocationId) {
@@ -67,8 +86,13 @@ public class SpecFactory {
                 mapInv.putIfAbsent(refPath, new ArrayList<>());
                 mapInv.get(refPath).add(child);
             }
+
+            final Map<Long, RecursiveRefsModel> rrm = buildRRM(mapInv);
             specModel.mockArgs = mapInv.keySet().stream().anyMatch(ref -> RefsInfo.RefType.ARG.equals(ref.type));
-            List<String> mockBlock = mapInv.entrySet().stream().flatMap(e -> buildMockBlock(e).stream()).collect(Collectors.toList());
+
+            List<String> mockBlock = mapInv.entrySet().stream()
+                    .filter(e -> !RefsInfo.RefType.RETURNED.equals(e.getKey().type))
+                    .flatMap(e -> buildRecursiveMockBlock(e.getValue(), rrm,1).stream()).collect(Collectors.toList());
 
             specModel.mockBlock = mockBlock;
 
@@ -79,6 +103,26 @@ public class SpecFactory {
         specModel.actionDecl = buildWhen(subjectInvocation);
         specModel.assertDecl = buildAssert(subjectInvocation);
         return specModel;
+    }
+
+    private static Map<Long, RecursiveRefsModel> buildRRM(Map<RefsInfo, List<Invocation>> mapInv) {
+        Map<Long, RecursiveRefsModel> rrm = new HashMap<>();
+        for (Map.Entry<RefsInfo, List<Invocation>> entry : mapInv.entrySet()) {
+            for (Invocation invocation : entry.getValue()) {
+                RecursiveRefsModel rm = new RecursiveRefsModel();
+                rm.setInvocation(invocation);
+                rm.setRefsInfo(entry.getKey());
+                rrm.put(invocation.id, rm);
+            }
+        }
+        for (RecursiveRefsModel value : rrm.values()) {
+            RefsInfo refsInfo = value.getRefsInfo();
+            if (RefsInfo.RefType.RETURNED.equals(refsInfo.type)) {
+                RecursiveRefsModel parent = rrm.get(refsInfo.returnedFrom);
+                parent.getChildren().add(value);
+            }
+        }
+        return Collections.unmodifiableMap(rrm);
     }
 
     public static String buildWhen(Invocation invocation) {
@@ -108,8 +152,9 @@ public class SpecFactory {
 
         return MustacheUtil.format("ret == RETURNED{{0}}", invocation.id);
     }
+    @Deprecated
+    public static List<String> buildMockBlock(Map.Entry<RefsInfo, List<Invocation>> invs, Map<Long, RecursiveRefsModel> rrm) {
 
-    public static List<String> buildMockBlock(Map.Entry<RefsInfo, List<Invocation>> invs) {
         List<String> ret = new ArrayList<>();
         List<Invocation> value = invs.getValue();
         Class clazz = value.get(0).getDeclaredClass();
@@ -144,6 +189,65 @@ public class SpecFactory {
             ret.add("}");
         }
         ret.add("}");
+        return ret;
+    }
+
+    public static List<String> buildRecursiveMockBlock(List<Invocation> invocationList, Map<Long, RecursiveRefsModel> rrm,int varCounter) {
+        if(invocationList==null||invocationList.isEmpty()){
+            return Collections.emptyList();
+        }
+        assert invocationList.stream().map(Invocation::getRefsInfo).distinct().count()==1;
+        String argNamePrefix = argNameOf(varCounter);
+        List<String> ret = new ArrayList<>();
+        RefsInfo refsInfo = invocationList.get(0).getRefsInfo();
+        Class declaredType = refsInfo.declaredType;
+        boolean opened=false;
+        if (RefsInfo.RefType.FIELD.equals(refsInfo.type)) {
+            opened=true;
+            ret.add(MustacheUtil.format("subject.{{0}}=Mock({{1}}){", refsInfo.name, declaredType.getName()));
+        } else if(RefsInfo.RefType.ARG.equals(refsInfo.type)){
+            opened=true;
+            ret.add(MustacheUtil.format("argMockDefs.{{0}}=Mock({{1}}){", refsInfo.name, declaredType.getName()));
+        }else if(RefsInfo.RefType.RETURNED.equals(refsInfo.type)){
+
+        }else {
+            throw new RuntimeException("never get here!");
+        }
+
+        for (Invocation invocation : invocationList) {
+            varCounter++;
+            String args = invocation.getSignature().replaceAll("^.*\\((.*?)\\)", "$1");
+            String[] argsSplit = Stream.of(args.split(",")).filter(s->!s.trim().isEmpty()).toArray(String[]::new);
+            int length = argsSplit.length;
+            //String argsLine = IntStream.range(0, length).mapToObj(i -> "{p" + i + "-> p" + i + "==INPUTS{{1}}[" + i + "]}").collect(Collectors.joining(","));
+            String argsLine = IntStream.range(0, length).mapToObj(i -> "INPUTS{{1}}[" + i + "]").collect(Collectors.joining(","));
+            String newArgsLine = IntStream.range(0, length).mapToObj(i -> argsSplit[i] +" "+ argNamePrefix + i + "").collect(Collectors.joining(","));
+            List<String> copyLine = IntStream.range(0, length)
+                    .boxed()
+                    .flatMap(i -> {
+                        String left = argNamePrefix + i + "";
+                        String right = MustacheUtil.format("OUTPUTS{{0}}[" + i + "]", invocation.id);
+                        String copy = MustacheUtil.format("{{1}}.copyDirtyPropsTo({{0}})", left, right);//
+                        return Stream.of(copy);
+                    }).collect(Collectors.toList());
+            //ret.add(MustacheUtil.format("1 * {{0}}(" + argsLine + ") >> RETURNED{{1}} ", invocation.method, invocation.id));
+            ret.add(MustacheUtil.format("1 * {{0}}(" + argsLine + ") >> { " + (newArgsLine.isEmpty()?argNamePrefix:newArgsLine) + "->", invocation.method, invocation.id));
+            ret.addAll(copyLine);
+            //ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
+            List<RecursiveRefsModel> children = rrm.get(invocation.id).getChildren();
+            if(children.isEmpty()){
+                ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
+            }else {
+                ret.add(MustacheUtil.format("return Mock({{0}}){", invocation.returnedType.getName()));
+                List<Invocation> collect = children.stream().map(RecursiveRefsModel::getInvocation).collect(Collectors.toList());
+                ret.addAll(buildRecursiveMockBlock(collect, rrm,varCounter++));
+                ret.add("}");
+            }
+            ret.add("}");
+        }
+        if (opened) {
+            ret.add("}");
+        }
         return ret;
     }
 
@@ -207,7 +311,7 @@ public class SpecFactory {
         } else if (value.isTextual()) {
             defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}'''{{1}}'''", name, value.asText())));
         } else if (value.isValueNode()) {
-            defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}{{1}}", name, value.asText())));
+            defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}{{1}} {{#2}}as {{2}}{{/2}}", name, value.asText(),genericSignature)));
         } else {
             assert value.isObject();
             defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}[", name), null));
