@@ -197,7 +197,7 @@ public class SpecFactory {
             return Collections.emptyList();
         }
         assert invocationList.stream().map(Invocation::getRefsInfo).distinct().count()==1;
-        String argNamePrefix = argNameOf(varCounter);
+
         List<String> ret = new ArrayList<>();
         RefsInfo refsInfo = invocationList.get(0).getRefsInfo();
         Class declaredType = refsInfo.declaredType;
@@ -215,7 +215,7 @@ public class SpecFactory {
         }
 
         for (Invocation invocation : invocationList) {
-            varCounter++;
+            String argNamePrefix = argNameOf(varCounter++);
             String args = invocation.getSignature().replaceAll("^.*\\((.*?)\\)", "$1");
             String[] argsSplit = Stream.of(args.split(",")).filter(s->!s.trim().isEmpty()).toArray(String[]::new);
             int length = argsSplit.length;
