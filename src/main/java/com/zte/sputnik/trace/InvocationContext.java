@@ -101,7 +101,7 @@ public class InvocationContext {
 
 
         Invocation prev = PREVIOUS.get();
-
+        MethodNames names = MethodNames.METHOD_NAMES_MAP.get(invocation.mid);
         if (prev != null) {
             invocation.parent = prev;
             if (prev.thisObjectSource == invocation.thisObjectSource) {
@@ -110,16 +110,25 @@ public class InvocationContext {
                 LOGGER.debug("stackCounter ++ :" + andIncrement);
                 return;
             }
-            RefsInfo refsInfo = prev.refs.get(invocation.thisObjectSource);
-            invocation.refsInfo = refsInfo;
-            invocation.declaredClass = refsInfo.declaredType;
+           if(invocation.staticInvoke){
+               RefsInfo refsInfo =new RefsInfo();
+               refsInfo.declaredType=invocation.clazzThis;
+               refsInfo.type= RefsInfo.RefType.INVOKE_STATIC;
+               refsInfo.name=names.signature;
+               invocation.refsInfo = refsInfo;
+               invocation.declaredClass = refsInfo.declaredType;
+           }else {
+               RefsInfo refsInfo = prev.refs.get(invocation.thisObjectSource);
+               invocation.refsInfo = refsInfo;
+               invocation.declaredClass = refsInfo.declaredType;
+           }
             prev.getChildren().add(invocation);
         }
         stack.push(invocation);
         argsStack.push(argsCopy);
         PREVIOUS.set(invocation);
         map.put(invocation.id, invocation);
-        MethodNames names = MethodNames.METHOD_NAMES_MAP.get(invocation.mid);
+
         ParamModel p = new ParamModel();
         for (int i = 0; i < argsCopy.length; i++) {
             Object arg = argsCopy[i];

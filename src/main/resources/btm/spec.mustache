@@ -3,6 +3,13 @@ package {{pkg}}
 
 import spock.lang.Specification;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.alibaba.ttl.threadpool.agent.TtlAgent;
+import com.zte.sputnik.Sputnik;
+import com.zte.sputnik.extension.BmUnitRule
+import org.jboss.byteman.contrib.bmunit.BMRule
+import org.jboss.byteman.contrib.bmunit.BMRules
+import org.jboss.byteman.contrib.bmunit.BMUnitConfig
+import org.junit.Rule
 {{/imports}}
 
 
@@ -10,8 +17,40 @@ import com.fasterxml.jackson.core.type.TypeReference;
 *   http://spockframework.org/
 */
 class {{className}} extends Specification {
+
+{{#hasStaticInvoke}}
+    @Rule
+    BmUnitRule bmUnitRule = new BmUnitRule();
+
+    def setupSpec(){
+        if (TtlAgent.firstLoad) {
+            Sputnik.loadTtlAgent();
+        }
+    }
+
+    def cleanupSpec(){
+        com.zte.sputnik.config.StaticInvoker.cleanup()
+    }
+
+    @BMUnitConfig(verbose = true, bmunitVerbose = true, debug = true)
+    @BMRules(rules = [
+        {{#staticNames}}
+            @BMRule(
+                name = "invoke_static:{{value.symbol}}",
+                targetClass = "{{value.ownerName}}",
+                targetMethod = "{{value.erased}}",
+                targetLocation = "AT ENTRY",
+                condition = 'com.zte.sputnik.config.StaticInvoker.hasMethod("{{value.ownerName}}::{{value.erased}}")',
+                action = 'return com.zte.sputnik.config.StaticInvoker.invokeStatic("{{value.ownerName}}::{{value.erased}}",$*)'
+            ),
+        {{/staticNames}}
+    ])
+{{/hasStaticInvoke}}
+
+
 void verify{{method}}() {
 given:
+{{#hasStaticInvoke}}def invokeStaticDefs=[:]{{/hasStaticInvoke}}
 {{subjectDecl}}
 {{#mockArgs}}
     def argMockDefs=[:]
@@ -25,7 +64,13 @@ then:
 {{assertDecl}}
 }
 
-
+{{#staticInvokes}}
+    private static interface StaticStub{{key}}{
+        {{#value}}
+            {{.}}
+        {{/value}}
+    }
+{{/staticInvokes}}
 {{#Inputs}}
     static final def INPUTS{{key}}= [
     {{#value}}

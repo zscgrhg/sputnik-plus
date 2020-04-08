@@ -14,6 +14,7 @@ public class RefsInfo {
     public enum RefType {
         FIELD,
         ARG,
-        RETURNED
+        RETURNED,
+        INVOKE_STATIC
     }
 }

@@ -19,7 +19,7 @@ public class TraceUtil {
     public static boolean shouldIgnore(Method method) {
         String pkg = method.getDeclaringClass().getPackage().getName();
         return method.isSynthetic()
-                || Modifier.isStatic(method.getModifiers())
+                //|| Modifier.isStatic(method.getModifiers())
                 || Modifier.isPrivate(method.getModifiers())
                 || pkg.startsWith("java.")
                 || pkg.startsWith("sun.");

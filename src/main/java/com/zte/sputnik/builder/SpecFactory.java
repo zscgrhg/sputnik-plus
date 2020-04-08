@@ -68,7 +68,8 @@ public class SpecFactory {
         Map<String, List<GroovyLine>> inputs = new HashMap<>();
         Map<String, List<GroovyLine>> outputs = new HashMap<>();
         Map<String, List<GroovyLine>> returned = new HashMap<>();
-
+        Map<Long,Set<String>> staticInvokes=new HashMap<>();
+        Map<Long,MethodNames> staticNames=new HashMap<>();
         inputs.put(String.valueOf(subjectInvocation.id), buildArgsLine(reader.readInParam(subjectInvocation.id)));
         JsonNode outParam = reader.readOutParam(subjectInvocation.id);
         outputs.put(String.valueOf(subjectInvocation.id), buildArgsLine(outParam));
@@ -85,6 +86,11 @@ public class SpecFactory {
                 RefsInfo refPath = child.getRefsInfo();
                 mapInv.putIfAbsent(refPath, new ArrayList<>());
                 mapInv.get(refPath).add(child);
+                if(child.staticInvoke){
+                    staticInvokes.putIfAbsent(child.mid,new HashSet<>());
+                    staticInvokes.get(child.mid).add(buildMethodDef(MethodNames.METHOD_NAMES_MAP.get(child.mid)));
+                    staticNames.putIfAbsent(child.mid,MethodNames.METHOD_NAMES_MAP.get(child.mid));
+                }
             }
 
             final Map<Long, RecursiveRefsModel> rrm = buildRRM(mapInv);
@@ -102,7 +108,20 @@ public class SpecFactory {
         specModel.Returned = returned.entrySet();
         specModel.actionDecl = buildWhen(subjectInvocation);
         specModel.assertDecl = buildAssert(subjectInvocation);
+        specModel.staticInvokes=staticInvokes.entrySet();
+        specModel.staticNames=staticNames.entrySet();
         return specModel;
+    }
+
+    private static String buildMethodDef(MethodNames methodNames){
+        String name = methodNames.method.getReturnType().getName();
+        String signature = methodNames.signature;
+        Class[] params = methodNames.getParametersType();
+        for (int i = 0; i < params.length; i++) {
+            String pn = params[i].getName();
+            signature= signature.replaceFirst("(\\Q"+pn+"\\E)(?=\\s*[,)])", "$1 arg"+i);
+        }
+       return name+" "+signature;
     }
 
     private static Map<Long, RecursiveRefsModel> buildRRM(Map<RefsInfo, List<Invocation>> mapInv) {
@@ -199,7 +218,9 @@ public class SpecFactory {
         assert invocationList.stream().map(Invocation::getRefsInfo).distinct().count()==1;
 
         List<String> ret = new ArrayList<>();
-        RefsInfo refsInfo = invocationList.get(0).getRefsInfo();
+        Invocation invo = invocationList.get(0);
+        MethodNames names = MethodNames.METHOD_NAMES_MAP.get(invo.mid);
+        RefsInfo refsInfo = invo.getRefsInfo();
         Class declaredType = refsInfo.declaredType;
         boolean opened=false;
         if (RefsInfo.RefType.FIELD.equals(refsInfo.type)) {
@@ -208,6 +229,9 @@ public class SpecFactory {
         } else if(RefsInfo.RefType.ARG.equals(refsInfo.type)){
             opened=true;
             ret.add(MustacheUtil.format("argMockDefs.{{0}}=Mock({{1}}){", refsInfo.name, declaredType.getName()));
+        }else if(RefsInfo.RefType.INVOKE_STATIC.equals(refsInfo.type)){
+            opened=true;
+            ret.add(MustacheUtil.format("invokeStaticDefs['{{0}}::{{1}}']=Mock(StaticStub{{2}}){", names.ownerName,names.erased, invo.mid));
         }else if(RefsInfo.RefType.RETURNED.equals(refsInfo.type)){
 
         }else {
