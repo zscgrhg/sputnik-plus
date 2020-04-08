@@ -16,7 +16,8 @@ import static org.jboss.byteman.contrib.bmunit.BMRunnerUtil.constructScriptText;
  * @author zscgrhg
  */
 public class BmUnitRule implements MethodRule {
-
+    public static final ThreadLocal<Boolean> PUSHED=new ThreadLocal<>();
+    public static final ThreadLocal<Boolean> SCRIPT_PUSHED=new ThreadLocal<>();
     @Override
     public Statement apply(Statement s, FrameworkMethod m, Object t) {
         s = this.addMethodRuleLoader(s, m, t.getClass());
@@ -36,11 +37,20 @@ public class BmUnitRule implements MethodRule {
                     return (Statement) new Statement() {
                         @Override
                         public void evaluate() throws Throwable {
-                            BMUnit.loadScriptText(clazz, name, script);
+
+                            Boolean p = SCRIPT_PUSHED.get();
+                            if(!Boolean.TRUE.equals(p)){
+                                BMUnit.loadScriptText(clazz, name, script);
+                                SCRIPT_PUSHED.set(true);
+                            }
+
                             try {
                                 s.evaluate();
                             } finally {
-                                BMUnit.unloadScriptText(clazz, name);
+                                if(Boolean.TRUE.equals(p)){
+                                    BMUnit.unloadScriptText(clazz, name);
+                                    SCRIPT_PUSHED.remove();
+                                }
                             }
                         }
                     };
@@ -49,21 +59,49 @@ public class BmUnitRule implements MethodRule {
 
 
     private Statement addMethodConfigLoader(final Statement s, FrameworkMethod m, final Class clazz) {
-        final BMUnitConfig classAnnotation = (BMUnitConfig) clazz.getAnnotation(BMUnitConfig.class);
-        final BMUnitConfig annotation = m.getAnnotation(BMUnitConfig.class);
-        final Method testMethod = m.getMethod();
-        return new Statement() {
-            @Override
-            public void evaluate() throws Throwable {
+        if (s instanceof ConfigStatement) {
+            return s;
+        } else {
+            return new ConfigStatement(s, m, clazz);
+        }
+    }
+
+    private static class ConfigStatement extends Statement {
+        final Statement s;
+        final FrameworkMethod m;
+        final Class clazz;
+        final BMUnitConfig classAnnotation;
+        final BMUnitConfig annotation;
+        final Method testMethod;
+
+        public ConfigStatement(Statement s, FrameworkMethod m, Class clazz) {
+            this.s = s;
+            this.m = m;
+            this.clazz = clazz;
+            this.classAnnotation = (BMUnitConfig) clazz.getAnnotation(BMUnitConfig.class);
+            this.annotation = m.getAnnotation(BMUnitConfig.class);
+            this.testMethod = m.getMethod();
+        }
+
+
+        @Override
+        public void evaluate() throws Throwable {
+            Boolean p = PUSHED.get();
+            if(!Boolean.TRUE.equals(p)){
                 BMUnitConfigState.pushConfigurationState(classAnnotation, clazz);
                 BMUnitConfigState.pushConfigurationState(annotation, testMethod);
-                try {
-                    s.evaluate();
-                } finally {
+                PUSHED.set(true);
+            }
+            try {
+                s.evaluate();
+            } finally {
+                if(Boolean.TRUE.equals(p)){
                     BMUnitConfigState.popConfigurationState(testMethod);
                     BMUnitConfigState.popConfigurationState(clazz);
+                    PUSHED.remove();
                 }
+
             }
-        };
+        }
     }
 }

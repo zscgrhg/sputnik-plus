@@ -10,6 +10,7 @@ import org.jboss.byteman.contrib.bmunit.BMRule
 import org.jboss.byteman.contrib.bmunit.BMRules
 import org.jboss.byteman.contrib.bmunit.BMUnitConfig
 import org.junit.Rule
+import com.zte.sputnik.config.StaticInvoker
 {{/imports}}
 
 
@@ -36,12 +37,13 @@ class {{className}} extends Specification {
     @BMRules(rules = [
         {{#staticNames}}
             @BMRule(
-                name = "invoke_static:{{value.symbol}}",
+                name = "invoke_static:{{value.ownerName}}::{{value.erased}}",
                 targetClass = "{{value.ownerName}}",
                 targetMethod = "{{value.erased}}",
+                binding = 'mockHandler:{{pkg}}.{{className}}$StaticStub{{value.mid}}=com.zte.sputnik.config.StaticInvoker.getMock("{{value.ownerName}}::{{value.erased}}")',
                 targetLocation = "AT ENTRY",
                 condition = 'com.zte.sputnik.config.StaticInvoker.hasMethod("{{value.ownerName}}::{{value.erased}}")',
-                action = 'return com.zte.sputnik.config.StaticInvoker.invokeStatic("{{value.ownerName}}::{{value.erased}}",$*)'
+                action = 'return mockHandler.{{value.name}}({{value.argRefs}})'
             ),
         {{/staticNames}}
     ])
@@ -50,7 +52,10 @@ class {{className}} extends Specification {
 
 void verify{{method}}() {
 given:
-{{#hasStaticInvoke}}def invokeStaticDefs=[:]{{/hasStaticInvoke}}
+{{#hasStaticInvoke}}
+    def invokeStaticDefs=[:]
+    StaticInvoker.setupMock(invokeStaticDefs)
+{{/hasStaticInvoke}}
 {{subjectDecl}}
 {{#mockArgs}}
     def argMockDefs=[:]
@@ -65,7 +70,7 @@ then:
 }
 
 {{#staticInvokes}}
-    private static interface StaticStub{{key}}{
+   private static interface StaticStub{{key}}{
         {{#value}}
             {{.}}
         {{/value}}

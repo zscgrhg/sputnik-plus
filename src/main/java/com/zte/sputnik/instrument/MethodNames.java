@@ -6,13 +6,13 @@ import com.zte.sputnik.util.ClassUtil;
 import lombok.Data;
 import shade.sputnik.org.slf4j.Logger;
 
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Data
@@ -99,5 +99,10 @@ public class MethodNames {
     public static String normalizeVarargs(String genericString) {
 
         return genericString.replaceAll("\\Q...\\E", "[]");
+    }
+
+    public String argRefs() {
+        int length = parametersType.length;
+        return IntStream.range(1, 1 + length).mapToObj(i -> "$" + i).collect(Collectors.joining(","));
     }
 }
