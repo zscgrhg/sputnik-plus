@@ -39,7 +39,7 @@ public class BMUtil {
         value.put("verbose",true);
         value.put("debug",true);
         value.put("bmunitVerbose",true);
-        value.put("police",false);
+        value.put("policy",false);
         value.put("dumpGeneratedClasses",false);
         value.put("dumpGeneratedClassesDirectory","");
         value.put("dumpGeneratedClassesIntermediate",false);

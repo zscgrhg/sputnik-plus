@@ -26,11 +26,11 @@ public class InvokeStaicHelper {
         INVOKE_STATIC_TTL.remove();
     }
 
-    public static boolean hasMethod(String methodSignure) {
+    public  boolean hasMethod(String methodSignure) {
         return Optional.ofNullable(INVOKE_STATIC_TTL.get()).orElse(Collections.emptyMap()).containsKey(methodSignure);
     }
 
-    public static Object getMock(String methodSignure) {
+    public  Object getMock(String methodSignure) {
         return Optional.ofNullable(INVOKE_STATIC_TTL.get()).map(m -> m.get(methodSignure))
                 .orElse(null);
     }

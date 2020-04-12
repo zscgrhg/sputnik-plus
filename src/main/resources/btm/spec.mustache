@@ -10,7 +10,7 @@ import org.jboss.byteman.contrib.bmunit.BMRule
 import org.jboss.byteman.contrib.bmunit.BMRules
 import org.jboss.byteman.contrib.bmunit.BMUnitConfig
 import org.junit.Rule
-import com.zte.sputnik.config.StaticInvoker
+import com.zte.sputnik.extension.InvokeStaicHelper
 {{/imports}}
 
 
@@ -21,28 +21,18 @@ class {{className}} extends Specification {
 
 {{#hasStaticInvoke}}
     @Rule
-    BmUnitRule bmUnitRule = new BmUnitRule();
+    BMRuleLoader ruleLoader = new BMRuleLoader();
 
-    def setupSpec(){
-        if (TtlAgent.firstLoad) {
-            Sputnik.loadTtlAgent();
-        }
-    }
-
-    def cleanupSpec(){
-        com.zte.sputnik.config.StaticInvoker.cleanup()
-    }
-
-    @BMUnitConfig(verbose = true, bmunitVerbose = true, debug = true)
     @BMRules(rules = [
         {{#staticNames}}
             @BMRule(
-                name = "invoke_static:{{value.ownerName}}::{{value.erased}}",
+                name = "invoke_static:{{value.ownerName}}::{{value.erased}}@{{pkg}}.{{className}}",
                 targetClass = "{{value.ownerName}}",
                 targetMethod = "{{value.erased}}",
-                binding = 'mockHandler:{{pkg}}.{{className}}$StaticStub{{value.mid}}=com.zte.sputnik.config.StaticInvoker.getMock("{{value.ownerName}}::{{value.erased}}")',
+                binding = 'mockHandler:{{pkg}}.{{className}}$StaticStub{{value.mid}}=getMock("{{value.ownerName}}::{{value.erased}}@{{pkg}}.{{className}}")',
                 targetLocation = "AT ENTRY",
-                condition = 'com.zte.sputnik.config.StaticInvoker.hasMethod("{{value.ownerName}}::{{value.erased}}")',
+                helper='com.zte.sputnik.extension.InvokeStaicHelper',
+                condition = 'hasMethod("{{value.ownerName}}::{{value.erased}}@{{pkg}}.{{className}}")',
                 action = 'return mockHandler.{{value.name}}({{value.argRefs}})'
             ),
         {{/staticNames}}
@@ -50,13 +40,19 @@ class {{className}} extends Specification {
 {{/hasStaticInvoke}}
 
 
-void verify{{method}}() {
+void 'verify method:{{signature}}'() {
 given:
-{{#hasStaticInvoke}}
-    def invokeStaticDefs=[:]
-    StaticInvoker.setupMock(invokeStaticDefs)
-{{/hasStaticInvoke}}
 {{subjectDecl}}
+{{#valueBlock}}
+    {{.}}
+{{/valueBlock}}
+{{#hasStaticInvoke}}
+    InvokeStaicHelper.cleanup()
+    def invokeStaticDefs=[:]
+    InvokeStaicHelper.setupMock(invokeStaticDefs)
+{{/hasStaticInvoke}}
+
+
 {{#mockArgs}}
     def argMockDefs=[:]
 {{/mockArgs}}
@@ -67,6 +63,10 @@ when:
 {{actionDecl}}
 then:
 {{assertDecl}}
+{{#hasStaticInvoke}}
+cleanup:
+    InvokeStaicHelper.cleanup()
+{{/hasStaticInvoke}}
 }
 
 {{#staticInvokes}}

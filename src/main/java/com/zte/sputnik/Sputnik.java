@@ -11,6 +11,7 @@ import lombok.SneakyThrows;
 import org.jboss.byteman.agent.Main;
 import shade.sputnik.org.slf4j.Logger;
 
+import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,7 +45,11 @@ public class Sputnik {
         Properties config = new Properties();
         Optional.ofNullable(Sputnik.class.getClassLoader().getResourceAsStream("sputnik.properties"))
                 .ifPresent(p->{
-                    config.load(p);
+                    try {
+                        config.load(p);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 });
 
         return config;

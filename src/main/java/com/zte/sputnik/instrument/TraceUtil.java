@@ -20,7 +20,7 @@ public class TraceUtil {
 
     public static String singureOf(Method m){
         String ms = m.toString();
-        return ms.substring(ms.indexOf(m.getName()+"("),ms.indexOf(")"+1));
+        return ms.substring(ms.indexOf(m.getName()+"("),ms.indexOf(")")+1);
     }
 
     public static Set<String> noTrace(){

@@ -14,6 +14,8 @@ public class SpecModel {
     String fileName;
     String subject;
     String method;
+    String signature;
+    String namespace;
     String subjectDecl;
     boolean mockArgs = false;
     List<String> mockBlock;
