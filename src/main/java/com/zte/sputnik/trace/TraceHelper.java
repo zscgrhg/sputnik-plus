@@ -67,6 +67,11 @@ public class TraceHelper {
         }
     }
 
+    /**
+     * 拦截返回类型为void的方法
+     * @param  mid
+     * @param args
+     */
     public void atExit(Long mid, Object[] args) {
         LOGGER.debug(mid + ",trigger by " + rule.getName());
         InvocationContext context = InvocationContext.getCurrent(false);
@@ -76,6 +81,11 @@ public class TraceHelper {
         }
     }
 
+    /**
+     * 拦截返回类型为非void的方法
+     * @param  mid
+     * @param args
+     */
     public void atExit(Long mid, Object[] args, Object ret) {
         LOGGER.debug(mid + ",trigger by " + rule.getName());
         InvocationContext context = InvocationContext.getCurrent(false);

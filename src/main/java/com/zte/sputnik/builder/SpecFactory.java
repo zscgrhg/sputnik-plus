@@ -105,7 +105,7 @@ public class SpecFactory {
                             e.getValue(), rrm,1).stream()).collect(Collectors.toList());
 
             specModel.mockBlock = mockBlock;
-            specModel.valueBlock=buildValuesBlock(subjectInvocation);
+            specModel.fieldsInitBlock = buildFieldsInitBlock(subjectInvocation);
         }
         specModel.Inputs = inputs.entrySet();
         specModel.Outputs = outputs.entrySet();
@@ -117,7 +117,7 @@ public class SpecFactory {
         return specModel;
     }
 
-    private static List<String> buildValuesBlock(Invocation subjectInvocation){
+    private static List<String> buildFieldsInitBlock(Invocation subjectInvocation){
         List<String> ret=new ArrayList<>();
         JsonNode values = reader.readValues(subjectInvocation.id);
         Iterator<String> names = values.fieldNames();

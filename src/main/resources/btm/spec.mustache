@@ -43,9 +43,9 @@ class {{className}} extends Specification {
 void 'verify method:{{signature}}'() {
 given:
 {{subjectDecl}}
-{{#valueBlock}}
+{{#fieldsInitBlock}}
     {{.}}
-{{/valueBlock}}
+{{/fieldsInitBlock}}
 {{#hasStaticInvoke}}
     InvokeStaicHelper.cleanup()
     def invokeStaticDefs=[:]

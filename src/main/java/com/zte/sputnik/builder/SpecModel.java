@@ -19,7 +19,7 @@ public class SpecModel {
     String subjectDecl;
     boolean mockArgs = false;
     List<String> mockBlock;
-    List<String> valueBlock;
+    List<String> fieldsInitBlock;
     Set<HashMap.Entry<Long, Set<String>>> staticInvokes;
     Set<HashMap.Entry<Long, MethodNames>> staticNames;
     String actionDecl = "1==1";
