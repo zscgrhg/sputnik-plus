@@ -59,8 +59,9 @@ public class SpecFactory {
         specModel.subject = clazz.getSimpleName();
         specModel.id = subjectInvocation.id;
         specModel.method = method;
-        specModel.className = method + "N" + BUILD_INCR.getAndIncrement() + "Spec";
         specModel.fileName = specModel.subject + FN;
+        specModel.className = specModel.fileName + "N" + BUILD_INCR.getAndIncrement() + "SpecTest";
+
         specModel.subjectDecl = MustacheUtil.format("def subject = new {{0}}()", clazz.getName());
 
         List<Invocation> children = subjectInvocation.children;

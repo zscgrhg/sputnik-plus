@@ -1,14 +1,11 @@
 package com.zte.sputnik.parse;
 
 
+import com.alibaba.ttl.TransmittableThreadLocal;
 import com.zte.sputnik.instrument.MethodNames;
 import com.zte.sputnik.instrument.TraceUtil;
 import com.zte.sputnik.lbs.LoggerBuilder;
-import io.github.classgraph.ClassGraph;
-import io.github.classgraph.ClassInfoList;
-import io.github.classgraph.ScanResult;
 import shade.sputnik.org.slf4j.Logger;
-
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -16,7 +13,10 @@ import java.lang.reflect.Parameter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.zte.sputnik.instrument.TraceUtil.shouldIgnore;
 
@@ -26,8 +26,8 @@ public class SubjectManager {
     private static final Logger LOGGER
             = LoggerBuilder.of(SubjectManager.class);
     public final Map<Class, Map<String, RefsInfo>> SUBJECT_CLASS_REFS = new ConcurrentHashMap<>();
-    TestSubjectSelector ss = new DefaultTestSubjectSelectorImpl();
-    TraceSelector ts = new DefaultTraceSelectorImpl();
+    public static final TransmittableThreadLocal<Class> SUBJECTS=new TransmittableThreadLocal<>();
+    public static final TransmittableThreadLocal<List<Field>> SUBJECTS_FIELDS=new TransmittableThreadLocal<>();
 
     private SubjectManager() {
 
@@ -42,51 +42,36 @@ public class SubjectManager {
     }
 
     public static boolean isTraced(Class clazz) {
-        return TraceUtil.TRACED.containsKey(clazz) || getInstance().ss.selectTestSubject(clazz) || getInstance().ts.select(clazz);
+        return TraceUtil.TRACED.containsKey(clazz);
     }
 
     public static boolean isSubject(Class clazz) {
-        return getInstance().ss.selectTestSubject(clazz);
+        return Objects.equals(clazz,SUBJECTS.get());
     }
 
-    public void loadFromPkg(String... pkg) {
-
-        try (ScanResult scanResult =
-                     new ClassGraph()
-                             .enableAllInfo()
-                             .whitelistPackages(pkg)
-                             .scan()) {
-            ClassInfoList clzInpkg = scanResult.getAllClasses();
-            List<Class<?>> classes = clzInpkg.loadClasses();
-            parse(classes);
-        }
+    public void parse(Class<?>... classList){
+        parse(Stream.of(classList).collect(Collectors.toList()));
     }
 
     public void parse(List<Class<?>> classList) {
         for (Class clz : classList) {
 
-            if (ss.selectTestSubject(clz)) {
-                TraceUtil.traceInvocation(clz, true);
-                SUBJECT_CLASS_REFS.putIfAbsent(clz, new HashMap<>());
-                Field[] fields = clz.getDeclaredFields();
+            SUBJECT_CLASS_REFS.putIfAbsent(clz, new HashMap<>());
+            Field[] fields = clz.getDeclaredFields();
 
-                for (Field field : fields) {
-                    Map<String, RefsInfo> subMap = SUBJECT_CLASS_REFS.get(clz);
-                    RefsInfo obj = new RefsInfo();
-                    obj.setType(RefsInfo.RefType.FIELD);
-                    Class<?> type = field.getType();
-                    if (ts.select(field) || ts.select(type)) {
-                        TraceUtil.traceInvocation(type, ss.selectTestSubject(type));
-                    }
-                    obj.setDeclaredType(type);
-                    obj.setName(field.getName());
-                    subMap.put(field.getName(), obj);
-                }
+            for (Field field : fields) {
+                Map<String, RefsInfo> subMap = SUBJECT_CLASS_REFS.get(clz);
+                RefsInfo obj = new RefsInfo();
+                obj.setType(RefsInfo.RefType.FIELD);
+                Class<?> type = field.getType();
+                obj.setDeclaredType(type);
+                obj.setName(field.getName());
+                subMap.put(field.getName(), obj);
+            }
 
-                Method[] methods = clz.getDeclaredMethods();
-                for (Method method : methods) {
-                    parseMethod(clz, method);
-                }
+            Method[] methods = clz.getDeclaredMethods();
+            for (Method method : methods) {
+                parseMethod(clz, method);
             }
         }
 
@@ -107,9 +92,6 @@ public class SubjectManager {
             RefsInfo obj = new RefsInfo();
             obj.setType(RefsInfo.RefType.ARG);
             Class<?> type = param.getType();
-            if (ts.select(param)) {
-                TraceUtil.traceInvocation(type, ss.selectTestSubject(type));
-            }
             obj.setDeclaredType(type);
             obj.setName(param.getName());
             obj.setIndex(i);

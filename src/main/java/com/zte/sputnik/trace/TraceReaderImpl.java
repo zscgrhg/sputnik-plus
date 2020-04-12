@@ -1,5 +1,6 @@
 package com.zte.sputnik.trace;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.zte.sputnik.config.SputnikConfig;
 import com.zte.sputnik.util.JsonUtil;
@@ -21,6 +22,13 @@ public class TraceReaderImpl implements TraceReader {
         byte[] bytes = Files.readAllBytes(input);
         JsonNode jsonNode = JsonUtil.readTree(bytes);
         return jsonNode;
+    }
+
+    @SneakyThrows
+    private <T> T readFile(TypeReference<T> clazz, String fileName) {
+        byte[] bytes = Files.readAllBytes(getWorkDir().toPath().resolve(fileName));
+        T model = JsonUtil.readerFor(clazz, bytes);
+        return model;
     }
 
     @SneakyThrows
@@ -46,5 +54,10 @@ public class TraceReaderImpl implements TraceReader {
     @Override
     public Invocation readInvocation(Long invocationId) {
         return readFile(Invocation.class, invocationId + ".subject.json");
+    }
+
+    @Override
+    public JsonNode readValues(Long invocationId) {
+        return readFile(invocationId + ".values.json");
     }
 }

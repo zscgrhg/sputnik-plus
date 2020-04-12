@@ -3,6 +3,7 @@ package com.zte.sputnik.trace;
 import com.zte.sputnik.config.SputnikConfig;
 import com.zte.sputnik.instrument.MethodNames;
 import com.zte.sputnik.lbs.LoggerBuilder;
+import com.zte.sputnik.parse.SubjectManager;
 import com.zte.sputnik.trace.proxy.ProxyResolver;
 import lombok.SneakyThrows;
 
@@ -57,7 +58,7 @@ public class TraceHelper {
                 }
             }
             invocation.clazzSource = c;
-            invocation.subject = MethodNames.isTestSubject(invocation.clazzSource, invocation.mid);
+            invocation.subject = SubjectManager.isSubject(invocation.clazzSource);
             invocation.saveObjectsRef(names.genericSymbol, methodArgs);
             //Method method = c.getMethod(names.name, names.parametersType);
             invocation.genericReturned = resolve(names.method.getGenericReturnType(), c).getTypeName();

@@ -8,4 +8,6 @@ public interface TraceReader {
     JsonNode readOutParam(Long invocationId);
 
     Invocation readInvocation(Long invocationId);
+
+    JsonNode readValues(Long invocationId);
 }

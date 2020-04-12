@@ -56,14 +56,8 @@ public class SputnikConfigImpl implements SputnikConfig {
 
     @Override
     public SpecWriter getSpecWriter() {
-        SpecWriter specWriter = Optional.ofNullable(Sputnik.CONFIG.getProperty("sputnik.spec.writer")).map(s -> {
-            try {
-                Class<?> swImpl = Class.forName(s);
-                return (SpecWriter) swImpl.newInstance();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }).orElse(new ExecutorSpecWriterImpl());
+        SpecWriter specWriter = Optional.ofNullable(SpecWriter.CURRENT.get())
+                .orElse(new ExecutorSpecWriterImpl());
         return specWriter;
     }
 

@@ -14,6 +14,7 @@ import shade.sputnik.org.slf4j.Logger;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Stream;
 
@@ -27,32 +28,38 @@ public class Sputnik {
 
     public static final Properties CONFIG = loadConfig();
 
-    @SneakyThrows
-    public static Properties loadConfig() {
-        Properties config = new Properties();
-        config.load(Sputnik.class.getClassLoader().getResourceAsStream("sputnik.properties"));
-        return config;
+    static {
+        initJNA();
     }
-
-
-    public synchronized static void loadAgent() throws Exception {
-
+    @SneakyThrows
+    private static void initJNA(){
         URL jnaLocation = Kernel32.class.getProtectionDomain().getCodeSource().getLocation();
         String path = Paths.get(jnaLocation.toURI()).toString();
         System.setProperty("jna.nosys", "true");
         System.setProperty("jna.boot.library.path", path);
+    }
+
+    @SneakyThrows
+    public static Properties loadConfig() {
+        Properties config = new Properties();
+        Optional.ofNullable(Sputnik.class.getClassLoader().getResourceAsStream("sputnik.properties"))
+                .ifPresent(p->{
+                    config.load(p);
+                });
+
+        return config;
+    }
+
+    @SneakyThrows
+    public synchronized static void loadAgent()  {
+
+
         if (Main.firstTime) {
             BMUtil.loadAgent();
         }
         if (TtlAgent.firstLoad) {
             loadTtlAgent();
         }
-
-
-        String subjectPkgs = CONFIG.getProperty("sputnik.subject.pkg");
-        Stream.of(subjectPkgs.split(",")).map(String::trim).filter(s -> !s.isEmpty())
-                .forEach(pkg -> SubjectManager.getInstance().loadFromPkg(subjectPkgs));
-
     }
 
     @SneakyThrows

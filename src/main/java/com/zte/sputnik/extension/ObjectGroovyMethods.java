@@ -17,9 +17,13 @@ import java.util.Collection;
 import java.util.Objects;
 
 public class ObjectGroovyMethods {
-    public static <T> T reconstruction(Object target, TypeReference<T> genericSignature) {
+    public static <T> T reconstructionFromJson(Object target, TypeReference<T> genericSignature) {
         String json = JsonUtil.write(target);
         return JsonUtil.readerFor(genericSignature, json);
+    }
+
+    public static <T> T reconstruction(Object target, TypeReference<T> genericSignature) {
+        return JsonUtil.convert(genericSignature,target);
     }
 
     public static <V> V reconstruction(Object target, Closure<V> closure) {
@@ -32,24 +36,28 @@ public class ObjectGroovyMethods {
                 || source instanceof NullObject || target instanceof NullObject || source instanceof RefsInfo) {
             return;
         }
-        Class<?> targetClass = target.getClass();
-        Class<?> sourceClass = source.getClass();
-        if (targetClass.isArray()) {
-            Object[] s = (Object[]) source;
-            Object[] t = (Object[]) target;
-            for (int i = 0; i < Math.min(s.length, t.length); i++) {
-                t[i] = s[i];
+        try {
+            Class<?> targetClass = target.getClass();
+            Class<?> sourceClass = source.getClass();
+            if (targetClass.isArray()) {
+                Object[] s = (Object[]) source;
+                Object[] t = (Object[]) target;
+                for (int i = 0; i < Math.min(s.length, t.length); i++) {
+                    t[i] = s[i];
+                }
+            } else if (Collection.class.isAssignableFrom(targetClass)) {
+                Collection c = (Collection) target;
+                c.clear();
+                c.addAll((Collection) source);
+            } else {
+                if (Objects.equals(source, target)) {
+                    return;
+                }
+                BeanCopier beanCopier = BeanCopier.create(target.getClass(), sourceClass, false);
+                beanCopier.copy(source, target, null);
             }
-        } else if (Collection.class.isAssignableFrom(targetClass)) {
-            Collection c = (Collection) target;
-            c.clear();
-            c.addAll((Collection) source);
-        } else {
-            if (Objects.equals(source, target)) {
-                return;
-            }
-            BeanCopier beanCopier = BeanCopier.create(target.getClass(), sourceClass, false);
-            beanCopier.copy(source, target, null);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return;
     }

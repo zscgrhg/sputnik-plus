@@ -8,14 +8,14 @@ import com.zte.sputnik.instrument.MethodNames;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.parse.RefsInfo;
 import com.zte.sputnik.parse.SubjectManager;
+import com.zte.sputnik.parse.ValueObjectModel;
+import com.zte.sputnik.util.ClassUtil;
 import lombok.Data;
 import shade.sputnik.org.slf4j.Logger;
 
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -119,8 +119,10 @@ public class InvocationContext {
                invocation.declaredClass = refsInfo.declaredType;
            }else {
                RefsInfo refsInfo = prev.refs.get(invocation.thisObjectSource);
-               invocation.refsInfo = refsInfo;
-               invocation.declaredClass = refsInfo.declaredType;
+               if(refsInfo!=null){
+                   invocation.refsInfo = refsInfo;
+                   invocation.declaredClass = refsInfo.declaredType;
+               }
            }
             prev.getChildren().add(invocation);
         }
@@ -149,6 +151,25 @@ public class InvocationContext {
         p.invocationId = invocation.id;
         p.name = ParamModel.INPUTS;
         traceWriter.write(p);
+        if(invocation.subject&&invocation.thisObjectSource!=null){
+            List<Field> fields = SubjectManager.SUBJECTS_FIELDS.get();
+            if(fields!=null){
+                Map<String, ValueObjectModel> values=new HashMap<>();
+                for (Field field : fields) {
+                    field.setAccessible(true);
+                    Object fieldValue = ClassUtil.getFieldValue(field, invocation.thisObjectSource);
+                    ValueObjectModel vm=new ValueObjectModel();
+                    vm.setValue(fieldValue);
+                    vm.setDeclType(field.getGenericType().getTypeName());
+                    Class clazz = Optional.ofNullable(fieldValue)
+                            .map(Object::getClass)
+                            .orElse((Class) field.getDeclaringClass());
+                    vm.setValueClass(clazz);
+                    values.put(field.getName(),vm);
+                }
+                traceWriter.writeValues(invocation,values);
+            }
+        }
     }
 
     public void pop(Object returnValue, Throwable exception) {
@@ -164,18 +185,7 @@ public class InvocationContext {
         Object[] originArgs = ARGS_STACK.get().pop();
         Invocation parent = pop.parent;
 
-        if (exception == null && parent != null && returnValue != null) {
-            Object returnedSourceObject = Invocation.resolveSource(returnValue);
-            boolean traced = SubjectManager.isTraced(returnedSourceObject.getClass());
-            if (traced) {
-                RefsInfo returnedRef = new RefsInfo();
-                returnedRef.type = RefsInfo.RefType.RETURNED;
-                returnedRef.returnedFrom = pop.id;
-                returnedRef.declaredType= MethodNames.METHOD_NAMES_MAP.get(pop.mid).method.getReturnType();
-                returnedRef.name="returnedBy"+pop.id;
-                parent.refs.put(returnedSourceObject, returnedRef);
-            }
-        }
+
         //MethodNames names = MethodNames.METHOD_NAMES_MAP.get(pop.mid);
         ParamModel p = new ParamModel();
         p.invocationId = pop.id;
@@ -191,6 +201,22 @@ public class InvocationContext {
             p.exception = exception.getClass().getName();
         }
         p.name = ParamModel.OUTPUTS;
+        if (exception == null && parent != null && returnValue != null) {
+            Object returnedSourceObject = Invocation.resolveSource(returnValue);
+            boolean traced = SubjectManager.isTraced(returnedSourceObject.getClass())
+                    ||SubjectManager.isTraced(pop.returnedType);
+            if (traced) {
+                RefsInfo returnedRef = new RefsInfo();
+                returnedRef.type = RefsInfo.RefType.RETURNED;
+                returnedRef.returnedFrom = pop.id;
+                returnedRef.declaredType= MethodNames.METHOD_NAMES_MAP.get(pop.mid).method.getReturnType();
+                returnedRef.name="returnedBy"+pop.id;
+                parent.refs.put(returnedSourceObject, returnedRef);
+                p.returned=returnedRef;
+                p.returnedType=RefsInfo.class;
+                p.returnedGenericType=RefsInfo.class.getName();
+            }
+        }
         traceWriter.write(p);
         pop.finished = true;
 

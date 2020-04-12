@@ -12,23 +12,47 @@ import lombok.SneakyThrows;
 import org.jboss.byteman.agent.install.Install;
 import org.jboss.byteman.agent.submit.ScriptText;
 import org.jboss.byteman.agent.submit.Submit;
+import org.jboss.byteman.contrib.bmunit.BMUnitConfig;
+import org.jboss.byteman.contrib.bmunit.BMUnitConfigState;
 import shade.sputnik.org.slf4j.Logger;
 
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.util.*;
 
 public class BMUtil {
     private static final Logger LOGGER = LoggerBuilder.of(BMUtil.class);
+    public static final int AGENT_PORT=findFreeSocketPort();
+    public static final String AGENT_HOST="localhost";
+    public static final BMUnitConfig DEFAULT_CONFIG=createConfig();
+
+    private static BMUnitConfig createConfig(){
+        Map<String,Object> value=new HashMap<>();
+        value.put("enforce",true);
+        value.put("agentPort",Integer.toString(AGENT_PORT));
+        value.put("agentHost",AGENT_HOST);
+        value.put("inhibitAgentLoad",true);
+        value.put("loadDirectory","");
+        value.put("resourceLoadDirectory","");
+        value.put("allowAgentConfigUpdate",true);
+        value.put("verbose",true);
+        value.put("debug",true);
+        value.put("bmunitVerbose",true);
+        value.put("police",false);
+        value.put("dumpGeneratedClasses",false);
+        value.put("dumpGeneratedClassesDirectory","");
+        value.put("dumpGeneratedClassesIntermediate",false);
+        return RuntimeAnnotations.buildFromMap(BMUnitConfig.class,value);
+    }
 
     public static int getPort() {
-        return 8848;
+        return AGENT_PORT;
     }
 
 
     public static String getHost() {
-        return "localhost";
+        return AGENT_HOST;
     }
 
     public static int getPid() {
@@ -43,9 +67,20 @@ public class BMUtil {
     }
 
     public static void loadAgent() throws Exception {
-        System.setProperty("org.jboss.byteman.verbose, org.jboss.byteman.debug", "true");
-        System.setProperty("org.jboss.byteman.transform.all", "true");
-        System.setProperty("org.jboss.byteman.compileToBytecode", "true");
+        if(Install.isAgentAttached(Integer.toString(getPid()))){
+            LOGGER.debug("agent already loaded!");
+            return;
+        }
+        Properties p=new Properties();
+        p.put("org.jboss.byteman.contrib.bmunit.agent.host",AGENT_HOST);
+        p.put("org.jboss.byteman.contrib.bmunit.agent.port",AGENT_PORT);
+        p.put("org.jboss.byteman.contrib.bmunit.agent.inhibit",true);
+        p.put("org.jboss.byteman.verbose", "true");
+        p.put("org.jboss.byteman.debug", "true");
+        p.put("org.jboss.byteman.transform.all", "true");
+        p.put("org.jboss.byteman.compileToBytecode", "true");
+
+        System.getProperties().putAll(p);
         String id = String.valueOf(getPid());
         try {
             System.out.println("BMUnit : loading agent id = " + id);
@@ -60,7 +95,10 @@ public class BMUtil {
                 proparray[i++] = key + "=" + properties.getProperty(key);
             }
             Install.install(id, true, false, getHost(), getPort(), proparray);
+            LOGGER.debug("bm:agent successfully installed at pid {} port {}",AGENT_HOST,AGENT_PORT);
             submit.setSystemProperties(properties);
+            BMUnitConfigState.pushConfigurationState(DEFAULT_CONFIG,(Class)null);
+            LOGGER.debug("bm:config pushed.");
         } catch (AgentInitializationException e) {
             // this probably indicates that the agent is already installed
         }
@@ -84,6 +122,7 @@ public class BMUtil {
         submit.deleteRulesFromFiles(files);
     }
 
+
     private interface CLibrary extends Library {
         CLibrary INSTANCE = Native.load("c", CLibrary.class);
 
@@ -105,5 +144,13 @@ public class BMUtil {
         submit.deleteScripts(scripts);
     }
 
-
+    public static int findFreeSocketPort(){
+        try {
+            ServerSocket socket = new ServerSocket(0);
+            socket.close();
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 }

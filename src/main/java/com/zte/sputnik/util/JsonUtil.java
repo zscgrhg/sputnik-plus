@@ -1,6 +1,7 @@
 package com.zte.sputnik.util;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -10,7 +11,9 @@ import lombok.SneakyThrows;
 
 public class JsonUtil {
 
-    static ObjectMapper MAPPER = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+    static ObjectMapper MAPPER = new ObjectMapper()
+            .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
 
     @SneakyThrows
     public static String write(Object obj) {
@@ -30,5 +33,13 @@ public class JsonUtil {
     @SneakyThrows
     public static <T> T readerFor(TypeReference<T> tTypeReference, String data) {
         return MAPPER.readerFor(tTypeReference).readValue(data);
+    }
+    @SneakyThrows
+    public static <T> T readerFor(TypeReference<T> tTypeReference, byte[] data) {
+        return MAPPER.readerFor(tTypeReference).readValue(data);
+    }
+    @SneakyThrows
+    public static <T> T convert(TypeReference<T> tTypeReference, Object data) {
+        return MAPPER.convertValue(data,tTypeReference);
     }
 }

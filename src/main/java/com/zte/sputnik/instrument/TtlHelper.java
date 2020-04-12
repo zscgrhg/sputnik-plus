@@ -23,10 +23,7 @@ public class TtlHelper {
         this.rule = rule;
     }
 
-    public ForkJoinWorkerThread getFJPWrapper(ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory, ForkJoinPool pool) {
-        ForkJoinWorkerThread forkJoinWorkerThread = TtlForkJoinPoolHelper.getDisableInheritableForkJoinWorkerThreadFactory(threadFactory).newThread(pool);
-        return forkJoinWorkerThread;
-    }
+
 
     public boolean setBarrier(Long mid) {
         MethodNames names = MethodNames.METHOD_NAMES_MAP.get(mid);

@@ -6,7 +6,7 @@ import java.util.Spliterators;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
+@Deprecated
 public class StreamBuilder {
     public static <T> Stream<T> build(Collection<T> seed, Function<T, Collection<T>> next) {
         return build(seed, next, true);
