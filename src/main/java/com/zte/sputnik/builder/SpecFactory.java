@@ -170,7 +170,7 @@ public class SpecFactory {
         }
         for (RecursiveRefsModel value : rrm.values()) {
             RefsInfo refsInfo = value.getRefsInfo();
-            if (RefsInfo.RefType.RETURNED.equals(refsInfo.type)) {
+            if (refsInfo!=null&&RefsInfo.RefType.RETURNED.equals(refsInfo.type)) {
                 RecursiveRefsModel parent = rrm.get(refsInfo.returnedFrom);
                 parent.getChildren().add(value);
             }

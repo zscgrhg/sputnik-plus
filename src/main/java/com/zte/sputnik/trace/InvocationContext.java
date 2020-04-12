@@ -20,6 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Data
 public class InvocationContext {
@@ -122,6 +124,11 @@ public class InvocationContext {
                if(refsInfo!=null){
                    invocation.refsInfo = refsInfo;
                    invocation.declaredClass = refsInfo.declaredType;
+               }else {
+                   StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+                   StackTraceElement stackTraceElement =
+                           Stream.of(stackTrace).filter(ste -> ste.getClassName().equals(prev.clazzSource.getName())).findFirst().get();
+                   LOGGER.error("Refsinfo lost! A method with return type '{}' at location {} was not tracked!",invocation.clazzSource,stackTraceElement);
                }
            }
             prev.getChildren().add(invocation);
