@@ -1,7 +1,6 @@
 package com.zte.sputnik.builder;
 
 import com.alibaba.ttl.threadpool.agent.TtlAgent;
-
 import com.zte.sputnik.Sputnik;
 import com.zte.sputnik.instrument.TraceUtil;
 import com.zte.sputnik.lbs.LoggerBuilder;
@@ -11,7 +10,6 @@ import com.zte.sputnik.util.ClassUtil;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import shade.sputnik.org.slf4j.Logger;
-
 
 import java.lang.reflect.Field;
 import java.util.*;
