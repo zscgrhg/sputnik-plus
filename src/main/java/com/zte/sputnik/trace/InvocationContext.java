@@ -23,25 +23,67 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+/**
+ * The type Invocation context.
+ */
 @Data
 public class InvocationContext {
     private static final Logger LOGGER = LoggerBuilder.of(InvocationContext.class);
     private static final SpecWriter SPEC_WRITER = SputnikConfig.INSTANCE.getSpecWriter();
 
+    /**
+     * The constant PREVIOUS.
+     */
     public final static TransmittableThreadLocal<Invocation> PREVIOUS = new TransmittableThreadLocal<>();
+    /**
+     * The constant CXT_INCR.
+     */
     public static final AtomicLong CXT_INCR = new AtomicLong(1);
+    /**
+     * The constant STAGED.
+     */
     public final static ThreadLocal<Invocation> STAGED = new ThreadLocal<>();
+    /**
+     * The constant CONTEXT.
+     */
     public final static ThreadLocal<InvocationContext> CONTEXT = new ThreadLocal<>();
+    /**
+     * The constant STACK_THREAD_LOCAL.
+     */
     public final static ThreadLocal<Stack<Invocation>> STACK_THREAD_LOCAL = new ThreadLocal<>();
+    /**
+     * The constant ARGS_STACK.
+     */
     public final static ThreadLocal<Stack<Object[]>> ARGS_STACK = new ThreadLocal<>();
+    /**
+     * The Entry counter.
+     */
     public final AtomicInteger ENTRY_COUNTER = new AtomicInteger(Integer.MIN_VALUE);
+    /**
+     * The Exit counter.
+     */
     public final AtomicInteger EXIT_COUNTER = new AtomicInteger(Integer.MAX_VALUE);
 
+    /**
+     * The Id.
+     */
     public final Long id = CXT_INCR.getAndIncrement();
+    /**
+     * The Map.
+     */
     @JsonIgnore
     public final Map<Long, Invocation> map = new ConcurrentHashMap<>();
+    /**
+     * The Trace writer.
+     */
     final TraceWriter traceWriter = new TraceWriterImpl();
 
+    /**
+     * Gets current.
+     *
+     * @param create the create
+     * @return the current
+     */
     public static InvocationContext getCurrent(boolean create) {
         InvocationContext current = CONTEXT.get();
         if (create && current == null) {
@@ -54,6 +96,12 @@ public class InvocationContext {
         return invocation.threadId == Thread.currentThread().getId();
     }
 
+    /**
+     * 一个方法调用可能触发多条 byteman rule: 追踪超类方法的rule和追踪子类方法的rule在子类方法
+     * 调用时都会触发。
+     *
+     * @return 如果已经执行了追踪规则 返回false;否则返回true并且重置入栈计数器和出栈计数器
+     */
     public boolean canPush() {
         long prev = ENTRY_COUNTER.get();
         int length = Thread.currentThread().getStackTrace().length;
@@ -67,6 +115,12 @@ public class InvocationContext {
         return success;
     }
 
+    /**
+     * 一个方法调用可能触发多条 byteman rule: 追踪超类方法的rule和追踪子类方法的rule在子类方法
+     * 调用时都会触发。
+     *
+     * @return 如果已经执行了追踪规则 返回false;否则返回true并且重置入栈计数器和出栈计数器
+     */
     public boolean canPop() {
         long prev = EXIT_COUNTER.get();
         int length = Thread.currentThread().getStackTrace().length;
@@ -80,6 +134,12 @@ public class InvocationContext {
         return success;
     }
 
+    /**
+     * Push.
+     *
+     * @param invocation the invocation
+     * @param originArgs the origin args
+     */
     public void push(Invocation invocation, Object[] originArgs) {
         Stack<Invocation> stack = STACK_THREAD_LOCAL.get();
         if (stack == null) {
@@ -179,6 +239,12 @@ public class InvocationContext {
         }
     }
 
+    /**
+     * Pop.
+     *
+     * @param returnValue the return value
+     * @param exception   the exception
+     */
     public void pop(Object returnValue, Throwable exception) {
         Stack<Invocation> stack = STACK_THREAD_LOCAL.get();
         Invocation last = stack.lastElement();
@@ -244,6 +310,11 @@ public class InvocationContext {
         }
     }
 
+    /**
+     * Gets nodes.
+     *
+     * @return the nodes
+     */
     public List<Invocation> getNodes() {
         List<Invocation> root = map.values().stream().filter(Invocation::isSubject).collect(Collectors.toList());
         return root;

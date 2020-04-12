@@ -21,6 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 
+/**
+ * The type Invocation.
+ */
 @Data
 @ToString(exclude = {
         "refs",
@@ -30,38 +33,117 @@ import java.util.concurrent.atomic.AtomicLong;
         "children",
 })
 public class Invocation {
+    /**
+     * ID生成器，作为一次方法调用的唯一标识
+     */
     public static final AtomicLong INVOCATION_INCR = new AtomicLong(1);
 
+    /**
+     * The Id.
+     */
     public final Long id = INVOCATION_INCR.getAndIncrement();
+    /**
+     * 调用方法的线程ID
+     */
     public final long threadId = Thread.currentThread().getId();
+    /**
+     * @{link java.lang.reflect.Method} 唯一标识
+     */
     public Long mid;
+    /**
+     * The Refs. 用于解析对象引用关系
+     * @see Invocation#saveObjectsRef
+     */
     @JsonIgnore
     public final Map<Object, RefsInfo> refs = new HashMap<>();
+    /**
+     * The Children.
+     */
     public final List<Invocation> children = new CopyOnWriteArrayList<>();
+    /**
+     * The This object.
+     */
     @JsonIgnore
     public Object thisObject;
+    /**
+     * The This object source.
+     */
     @JsonIgnore
     public Object thisObjectSource;
+    /**
+     * The Args names.
+     */
     public final Map<Integer, RefsInfo> argsNames = new HashMap<>();
 
+    /**
+     * The Method.
+     */
     public String method;
+    /**
+     * The Signature.
+     */
     public String signature;
+    /**
+     * The Stack counter.
+     */
     public final AtomicInteger stackCounter = new AtomicInteger(1);
 
+    /**
+     * The Refs info.
+     */
     public RefsInfo refsInfo;
+    /**
+     * The Declared class.
+     */
     public Class declaredClass;
+    /**
+     * The Static invoke.
+     */
     public boolean staticInvoke = false;
+    /**
+     * The Subject.
+     */
     public boolean subject = false;
+    /**
+     * The Finished.
+     */
     public volatile boolean finished = false;
+    /**
+     * The Generic returned.
+     */
     public String genericReturned;
+    /**
+     * The Generic args.
+     */
     public String[] genericArgs;
+    /**
+     * The Clazz source.
+     */
     public Class clazzSource;
+    /**
+     * The Clazz this.
+     */
     public Class clazzThis;
+    /**
+     * The Args type.
+     */
     public Class[] argsType;
+    /**
+     * The Returned type.
+     */
     public Class returnedType;
+    /**
+     * The Parent.
+     */
     @JsonIgnore
     Invocation parent;
 
+    /**
+     * Resolve source object behind some aop proxy
+     *
+     * @param proxy the proxy
+     * @return the object behind the proxy
+     */
     public static Object resolveSource(Object proxy) {
         ProxyResolver proxyResolver = SputnikConfig.INSTANCE.getProxyResolver();
         if (proxyResolver.isProxy(proxy)) {
@@ -73,6 +155,12 @@ public class Invocation {
         return proxy;
     }
 
+    /**
+     * Save objects ref.
+     *
+     * @param methodSignure the method signure
+     * @param args          the args
+     */
     @SneakyThrows
     public void saveObjectsRef(String methodSignure, Object[] args) {
         try {
