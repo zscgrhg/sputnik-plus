@@ -34,8 +34,7 @@ public class TraceHelper {
         Invocation invocation = new Invocation();
         invocation.mid = mid;
         MethodNames names = MethodNames.METHOD_NAMES_MAP.get(mid);
-
-        InvocationContext context = InvocationContext.getCurrent(SubjectManager.isSubject(names.context));
+        InvocationContext context = InvocationContext.getCurrent(names);
         if (context!=null&&context.canPush()) {
             Object[] methodArgs = Stream.of(args).skip(1).toArray();
             invocation.setMethod(names.name);

@@ -335,7 +335,13 @@ public class SpecFactory {
         } else if (value.isTextual()) {
             defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}'''{{1}}'''", groovyId(name), value.asText())));
         } else if (value.isValueNode()) {
-            defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}{{1}} {{#2}}as {{2}}{{/2}}", groovyId(name), value.asText(),genericSignature)));
+            if(void.class.getName().equals(genericSignature)
+                ||Void.class.getName().equals(genericSignature)){
+                defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}{{1}}", groovyId(name), value.asText())));
+            }else {
+                defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}{{1}} {{#2}}as {{2}}{{/2}}", groovyId(name), value.asText(),genericSignature)));
+            }
+
         } else {
             assert value.isObject();
             defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}[", groovyId(name)), null));
@@ -363,7 +369,7 @@ public class SpecFactory {
             &&!genericSignature.startsWith("java.lang.")) {
                 groovyLine.tokens = MustacheUtil.format("{{0}}.reconstruction(new TypeReference<{{1}}>(){})", groovyLine.tokens, genericSignature);
             } else {
-                groovyLine.tokens = MustacheUtil.format("{{0}} as {{1}}", groovyLine.tokens, genericSignature);
+                groovyLine.tokens = MustacheUtil.format("{{0}} as {{1}}", groovyLine.tokens, Optional.ofNullable(valueType).orElse(genericSignature));
             }
 
         }

@@ -95,6 +95,12 @@ public class InvocationContext {
     private static boolean checkTheadId(Invocation invocation) {
         return invocation.threadId == Thread.currentThread().getId();
     }
+    public static InvocationContext getCurrent(MethodNames names) {
+       return getCurrent(canCreateContxt(names));
+    }
+    public static boolean canCreateContxt(MethodNames names){
+        return SubjectManager.isSubject(names.context)||PREVIOUS.get()!=null;
+    }
 
     /**
      * 一个方法调用可能触发多条 byteman rule: 追踪超类方法的rule和追踪子类方法的rule在子类方法
