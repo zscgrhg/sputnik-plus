@@ -35,12 +35,13 @@ public class SimpleGenerator<T> implements Iterator<Collection<T>> {
             throw new NoSuchElementException("No more elements!");
         }
         if (start) {
+            start = false;
             return seed;
         }
         seed = seed.stream()
-                .flatMap(t -> Optional.ofNullable(next.apply(t))
-                        .map(Collection::stream)
-                        .filter(Objects::nonNull)
+                .flatMap(t -> Optional.ofNullable(t)
+                        .map(next::apply)
+                        .map(x->x.stream().filter(Objects::nonNull))
                         .orElse(Stream.empty()))
                 .collect(Collectors.toList());
         return seed;
