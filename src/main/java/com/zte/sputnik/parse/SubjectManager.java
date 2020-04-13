@@ -42,7 +42,8 @@ public class SubjectManager {
     }
 
     public static boolean isTraced(Class clazz) {
-        return TraceUtil.TRACED.containsKey(clazz);
+        return TraceUtil.TRACED.containsKey(clazz) ||
+                TraceUtil.TRACED.keySet().stream().anyMatch(ck -> ck.isAssignableFrom(clazz));
     }
 
     public static boolean isSubject(Class clazz) {

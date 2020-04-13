@@ -1,6 +1,8 @@
 package com.zte.sputnik.extension;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.zte.sputnik.instrument.MethodNames;
+import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.parse.RefsInfo;
 import com.zte.sputnik.util.JsonUtil;
 import groovy.lang.Closure;
@@ -8,6 +10,7 @@ import lombok.SneakyThrows;
 
 import net.sf.cglib.beans.BeanCopier;
 import org.codehaus.groovy.runtime.NullObject;
+import shade.sputnik.org.slf4j.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -17,6 +20,8 @@ import java.util.Collection;
 import java.util.Objects;
 
 public class ObjectGroovyMethods {
+    private static final Logger LOGGER = LoggerBuilder.of(ObjectGroovyMethods.class);
+
     public static <T> T reconstructionFromJson(Object target, TypeReference<T> genericSignature) {
         String json = JsonUtil.write(target);
         return JsonUtil.readerFor(genericSignature, json);
@@ -30,7 +35,7 @@ public class ObjectGroovyMethods {
         return closure.call(target);
     }
 
-    @SneakyThrows
+
     public static <V> void copyDirtyPropsTo(V source, V target) {
         if (Objects.equals(source, target) || source == null || target == null
                 || source instanceof NullObject || target instanceof NullObject || source instanceof RefsInfo) {
@@ -56,10 +61,9 @@ public class ObjectGroovyMethods {
                 BeanCopier beanCopier = BeanCopier.create(target.getClass(), sourceClass, false);
                 beanCopier.copy(source, target, null);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Throwable t) {
+            LOGGER.error(t.getMessage());
         }
-        return;
     }
 
     @SneakyThrows

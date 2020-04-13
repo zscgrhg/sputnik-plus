@@ -64,7 +64,7 @@ public class TraceUtil {
             MethodNames names = MethodNames.build(method, clazz);
             {
 
-                BMRuleMustacheModel model = BMRuleMustacheModel.atEntry(names, true);
+                BMRuleMustacheModel model = BMRuleMustacheModel.atEntry(names, !isSubject);
                 model.setHelper(TraceHelper.class);
                 model.addAction(MustacheUtil.format("atEntry({{0}},$*);", MethodNames.BIND_NAME));
                 String rule = MustacheUtil.render(model);
@@ -76,7 +76,7 @@ public class TraceUtil {
                 });
             }
             {
-                BMRuleMustacheModel model = BMRuleMustacheModel.atExit(names, true);
+                BMRuleMustacheModel model = BMRuleMustacheModel.atExit(names, !isSubject);
                 model.setHelper(TraceHelper.class);
                 Class<?> returnType = names.method.getReturnType();
                 if (Void.class.equals(returnType) || void.class.equals(returnType)) {
@@ -94,7 +94,7 @@ public class TraceUtil {
                 });
             }
             {
-                BMRuleMustacheModel model = BMRuleMustacheModel.atException(names, true);
+                BMRuleMustacheModel model = BMRuleMustacheModel.atException(names, !isSubject);
                 model.setHelper(TraceHelper.class);
                 model.addAction(MustacheUtil.format("atException({{0}},$*,$^);", MethodNames.BIND_NAME));
                 String rule = MustacheUtil.render(model);

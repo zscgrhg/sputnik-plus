@@ -31,12 +31,13 @@ public class TraceHelper {
     @SneakyThrows
     public void atEntry(Long mid, Object[] args) {
         LOGGER.debug(mid + ",trigger by " + rule.getName());
-        InvocationContext context = InvocationContext.getCurrent(true);
-        if (context.canPush()) {
-            Invocation invocation = new Invocation();
-            invocation.mid = mid;
+        Invocation invocation = new Invocation();
+        invocation.mid = mid;
+        MethodNames names = MethodNames.METHOD_NAMES_MAP.get(mid);
+
+        InvocationContext context = InvocationContext.getCurrent(SubjectManager.isSubject(names.context));
+        if (context!=null&&context.canPush()) {
             Object[] methodArgs = Stream.of(args).skip(1).toArray();
-            MethodNames names = MethodNames.METHOD_NAMES_MAP.get(mid);
             invocation.setMethod(names.name);
             invocation.setSignature(names.signature);
             Object thisObject = args[0];
