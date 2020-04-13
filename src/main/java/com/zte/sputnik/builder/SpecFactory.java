@@ -372,12 +372,22 @@ public class SpecFactory {
     }
 
     public static String groovyId(String name){
-
         if(name==null||javax.lang.model.SourceVersion.isIdentifier(name)){
             return name;
         }
-        return "'"+name+"'";
+        final char singleQuote=(char)39;
+        final char backslash=(char)92;
+        StringBuilder builder=new StringBuilder(singleQuote);
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if(c==singleQuote){
+                builder.append(backslash).append(c);
+            }
+        }
+        builder.append(singleQuote);
+        return builder.toString();
     }
+
 
     @SneakyThrows
     public static void writeSpec(Long subjectInvocationId) {
