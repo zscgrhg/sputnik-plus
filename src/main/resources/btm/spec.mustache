@@ -23,6 +23,8 @@ class {{className}} extends Specification {
     @Rule
     BMRuleLoader ruleLoader = new BMRuleLoader();
 
+
+
     @BMRules(rules = [
         {{#staticNames}}
             @BMRule(
@@ -47,9 +49,7 @@ given:
     {{.}}
 {{/fieldsInitBlock}}
 {{#hasStaticInvoke}}
-    InvokeStaicHelper.cleanup()
     def invokeStaticDefs=[:]
-    InvokeStaicHelper.setupMock(invokeStaticDefs)
 {{/hasStaticInvoke}}
 
 
@@ -59,13 +59,17 @@ given:
 {{#mockBlock}}
     {{.}}
 {{/mockBlock}}
+
+{{#hasStaticInvoke}}
+    InvokeStaicHelper.setupMock(invokeStaticDefs)
+{{/hasStaticInvoke}}
 when:
 {{actionDecl}}
 then:
 {{assertDecl}}
 {{#hasStaticInvoke}}
 cleanup:
-    InvokeStaicHelper.cleanup()
+    InvokeStaicHelper.cleanup(invokeStaticDefs)
 {{/hasStaticInvoke}}
 }
 

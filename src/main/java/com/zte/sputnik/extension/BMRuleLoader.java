@@ -49,9 +49,6 @@ public class BMRuleLoader implements MethodRule {
 
     static {
         Sputnik.loadAgent();
-        if(TtlAgent.firstLoad){
-            Sputnik.loadTtlAgent();
-        }
     }
 
 }
