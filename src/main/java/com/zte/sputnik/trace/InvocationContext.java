@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static com.zte.sputnik.parse.SubjectManager.SUBJECT_CLASS_FIELDS;
+
 /**
  * The type Invocation context.
  */
@@ -225,7 +227,9 @@ public class InvocationContext {
         p.name = ParamModel.INPUTS;
         traceWriter.write(p);
         if(invocation.subject&&invocation.thisObjectSource!=null){
-            List<Field> fields = SubjectManager.SUBJECTS_FIELDS.get();
+            List<Field> fields = Optional.ofNullable(SUBJECT_CLASS_FIELDS.get())
+                    .map(m -> m.get(names.context))
+                    .orElse(new ArrayList<>());
             if(fields!=null){
                 Map<String, ValueObjectModel> values=new HashMap<>();
                 for (Field field : fields) {
@@ -298,10 +302,13 @@ public class InvocationContext {
         }
         traceWriter.write(p);
         pop.finished = true;
-
+        if(pop.subject){
+            traceWriter.write(pop);
+            SPEC_WRITER.write(pop.id);
+        }
         if (stack.isEmpty()) {
             traceWriter.write(this);
-            SPEC_WRITER.write(pop.id);
+
 
             CONTEXT.remove();
             PREVIOUS.remove();
@@ -322,7 +329,9 @@ public class InvocationContext {
      * @return the nodes
      */
     public List<Invocation> getNodes() {
-        List<Invocation> root = map.values().stream().filter(Invocation::isSubject).collect(Collectors.toList());
+        List<Invocation> root = map.values().stream()
+                .filter(inv->inv.parent==null)
+                .collect(Collectors.toList());
         return root;
     }
 

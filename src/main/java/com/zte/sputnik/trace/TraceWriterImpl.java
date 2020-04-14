@@ -34,14 +34,20 @@ public class TraceWriterImpl implements TraceWriter {
 
         List<Invocation> nodes = context.getNodes();
         for (Invocation node : nodes) {
-            Path file = SputnikConfig.INSTANCE.getTraceOutputsDir().toPath().resolve(node.id + ".subject.json");
-            LOGGER.debug("write:" + file);
-            Files.copy(new ByteArrayInputStream(JsonUtil.write(node).getBytes("UTF8")),
-                    file,
-                    StandardCopyOption.REPLACE_EXISTING);
+            write(node);
         }
 
     }
+    @SneakyThrows
+    @Override
+    public void write(Invocation invocation) {
+        Path file = SputnikConfig.INSTANCE.getTraceOutputsDir().toPath().resolve(invocation.id + ".subject.json");
+        LOGGER.debug("write:" + file);
+        Files.copy(new ByteArrayInputStream(JsonUtil.write(invocation).getBytes("UTF8")),
+                file,
+                StandardCopyOption.REPLACE_EXISTING);
+    }
+
     @SneakyThrows
     @Override
     public void writeValues(Invocation owner, Map<String, ValueObjectModel> values) {

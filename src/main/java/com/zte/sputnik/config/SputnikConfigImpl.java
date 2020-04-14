@@ -2,6 +2,7 @@ package com.zte.sputnik.config;
 
 import com.zte.sputnik.Sputnik;
 import com.zte.sputnik.builder.ExecutorSpecWriterImpl;
+import com.zte.sputnik.builder.NoopSpecWriterImpl;
 import com.zte.sputnik.builder.SpecWriter;
 import com.zte.sputnik.trace.TraceWriterImpl;
 import com.zte.sputnik.trace.proxy.DefaultProxyResolverImpl;

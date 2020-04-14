@@ -10,10 +10,7 @@ import shade.sputnik.org.slf4j.Logger;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -26,8 +23,10 @@ public class SubjectManager {
     private static final Logger LOGGER
             = LoggerBuilder.of(SubjectManager.class);
     public final Map<Class, Map<String, RefsInfo>> SUBJECT_CLASS_REFS = new ConcurrentHashMap<>();
+    public static final TransmittableThreadLocal<Map<Class, List<Field>>> SUBJECT_CLASS_FIELDS = new TransmittableThreadLocal<>();
     public static final TransmittableThreadLocal<Class> SUBJECTS=new TransmittableThreadLocal<>();
     public static final TransmittableThreadLocal<List<Field>> SUBJECTS_FIELDS=new TransmittableThreadLocal<>();
+
 
     private SubjectManager() {
 
@@ -47,14 +46,16 @@ public class SubjectManager {
     }
 
     public static boolean isSubject(Class clazz) {
-        return Objects.equals(clazz,SUBJECTS.get());
+        return Optional.ofNullable(SUBJECT_CLASS_FIELDS.get())
+                .map(m -> m.containsKey(clazz))
+                .orElse(false);
     }
 
     public void parse(Class<?>... classList){
         parse(Stream.of(classList).collect(Collectors.toList()));
     }
 
-    public void parse(List<Class<?>> classList) {
+    public void parse(Collection<Class> classList) {
         for (Class clz : classList) {
 
             SUBJECT_CLASS_REFS.putIfAbsent(clz, new HashMap<>());
