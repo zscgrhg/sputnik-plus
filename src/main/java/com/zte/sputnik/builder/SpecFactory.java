@@ -322,7 +322,7 @@ public class SpecFactory {
         List<GroovyLine> defs = new ArrayList<>();
 
         if (value.isArray()) {
-            defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}[", name), null));
+            defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}[", groovyId(name)), null));
             ArrayNode arrayNode = (ArrayNode) value;
             List<GroovyLine> subLines = new ArrayList<>();
             for (int i = 0; i < arrayNode.size(); i++) {
@@ -400,6 +400,8 @@ public class SpecFactory {
 
     @SneakyThrows
     public static void writeSpec(Long subjectInvocationId) {
+
+
         SpecModel model = build(subjectInvocationId);
         Path pkg = SputnikConfig.INSTANCE
                 .getSpecOutputsDir()
@@ -414,5 +416,13 @@ public class SpecFactory {
         LOGGER.debug("write :" + resolve.toString());
         Files.write(resolve,
                 specText.getBytes("UTF-8"), StandardOpenOption.CREATE);
+
+        Invocation invocation = reader.readInvocation(subjectInvocationId);
+        List<Invocation> children = invocation.children;
+        for (Invocation child : children) {
+            if(child.subject){
+                writeSpec(child.id);
+            }
+        }
     }
 }
