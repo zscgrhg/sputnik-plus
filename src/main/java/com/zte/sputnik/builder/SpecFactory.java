@@ -6,6 +6,7 @@ import com.zte.sputnik.config.SputnikConfig;
 import com.zte.sputnik.instrument.MethodNames;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.parse.RefsInfo;
+import com.zte.sputnik.parse.SubjectManager;
 import com.zte.sputnik.trace.Invocation;
 import com.zte.sputnik.trace.TraceReader;
 import com.zte.sputnik.trace.TraceReaderImpl;
@@ -259,7 +260,7 @@ public class SpecFactory {
             ret.addAll(copyLine);
             //ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
             List<RecursiveRefsModel> children = rrm.get(invocation.id).getChildren();
-            if(children.isEmpty()){
+            if(!SubjectManager.isTraced(invocation.returnedType)){
                 ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
             }else {
                 ret.add(MustacheUtil.format("return Mock({{0}}){", invocation.returnedType.getName()));
@@ -383,12 +384,14 @@ public class SpecFactory {
         }
         final char singleQuote=(char)39;
         final char backslash=(char)92;
-        StringBuilder builder=new StringBuilder(singleQuote);
+        StringBuilder builder=new StringBuilder();
+        builder.append(singleQuote);
         for (int i = 0; i < name.length(); i++) {
             char c = name.charAt(i);
             if(c==singleQuote){
-                builder.append(backslash).append(c);
+                builder.append(backslash);
             }
+            builder.append(c);
         }
         builder.append(singleQuote);
         return builder.toString();
