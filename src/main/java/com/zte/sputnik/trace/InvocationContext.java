@@ -304,11 +304,13 @@ public class InvocationContext {
         pop.finished = true;
         if(pop.subject){
             traceWriter.write(pop);
-            SPEC_WRITER.write(pop.id);
+
         }
         if (stack.isEmpty()) {
             traceWriter.write(this);
-
+            if(pop.subject){
+                SPEC_WRITER.write(pop.id);
+            }
 
             CONTEXT.remove();
             PREVIOUS.remove();
