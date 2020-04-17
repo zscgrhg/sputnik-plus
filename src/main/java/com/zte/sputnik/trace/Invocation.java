@@ -51,6 +51,7 @@ public class Invocation {
      * @{link java.lang.reflect.Method} 唯一标识
      */
     public Long mid;
+    @JsonIgnore
     public MethodNames names;
     /**
      * The Refs. 用于解析对象引用关系

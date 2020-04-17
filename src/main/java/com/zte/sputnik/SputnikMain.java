@@ -60,6 +60,11 @@ public class SputnikMain {
     }
 
     @SneakyThrows
+    public synchronized static void loadBytemanAgent()  {
+        BMUtil.loadAgent();
+    }
+
+    @SneakyThrows
     public synchronized static void loadTtlAgent() {
        if(!TtlAgent.isTtlAgentLoaded()){
            try {

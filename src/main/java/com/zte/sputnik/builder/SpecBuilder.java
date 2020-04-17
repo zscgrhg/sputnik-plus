@@ -270,7 +270,7 @@ public class SpecBuilder {
             ret.addAll(copyLine);
             //ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
             List<RecursiveRefsModel> children = rrm.get(invocation.id).getChildren();
-            if(SubjectManager.isTraced(invocation.returnedType)){
+            if(!SubjectManager.isTraced(invocation.returnedType)){
                 ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
             }else {
                 ret.add(MustacheUtil.format("return Mock({{0}}){", invocation.returnedType.getName()));

@@ -242,7 +242,7 @@ public class InvocationContext {
             return refsInfo;
         }else {
             RefsInfo refsInfo = parent.refs.get(current.thisObjectSource);
-            if(refsInfo!=null){
+            if(refsInfo==null){
                 refsInfo=new RefsInfo();
                 refsInfo.type=RefsInfo.RefType.UNRESOLVABLE;
                 refsInfo.declaredType=current.names.context;

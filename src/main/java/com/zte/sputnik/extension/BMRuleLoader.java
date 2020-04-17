@@ -46,8 +46,8 @@ public class BMRuleLoader implements MethodRule {
                 }).orElse(s);
     }
 
-   /* static {
-        SputnikMain.loadAgent();
-    }*/
+    static {
+        SputnikMain.loadBytemanAgent();
+    }
 
 }
