@@ -10,6 +10,11 @@ public class SpecModel {
     boolean imports = true;
     String pkg;
     Long id;
+    String title;
+    String tc;
+    String tm;
+    Long invocationId;
+    Date now=new Date();
     String className;
     String fileName;
     String subject;

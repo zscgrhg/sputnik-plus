@@ -2,7 +2,6 @@ package com.zte.sputnik.trace;
 
 import com.zte.sputnik.config.SputnikConfig;
 import com.zte.sputnik.lbs.LoggerBuilder;
-import com.zte.sputnik.parse.ValueObjectModel;
 import com.zte.sputnik.util.JsonUtil;
 import lombok.SneakyThrows;
 import shade.sputnik.org.slf4j.Logger;
@@ -41,8 +40,16 @@ public class TraceWriterImpl implements TraceWriter {
     @SneakyThrows
     @Override
     public void write(Invocation invocation) {
+        if(!invocation.subject){
+            LOGGER.debug("skip write:"+invocation.signature);
+            return;
+        }
         Path file = SputnikConfig.INSTANCE.getTraceOutputsDir().toPath().resolve(invocation.id + ".subject.json");
         LOGGER.debug("write:" + file);
+        if(file.toFile().exists()){
+            LOGGER.debug("file already exist:"+file);
+            return;
+        }
         Files.copy(new ByteArrayInputStream(JsonUtil.write(invocation).getBytes("UTF8")),
                 file,
                 StandardCopyOption.REPLACE_EXISTING);

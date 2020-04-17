@@ -6,9 +6,7 @@ import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.VirtualMachine;
 import com.zte.sputnik.instrument.BMUtil;
 import com.zte.sputnik.lbs.LoggerBuilder;
-import com.zte.sputnik.parse.SubjectManager;
 import lombok.SneakyThrows;
-import org.jboss.byteman.agent.Main;
 import shade.sputnik.org.slf4j.Logger;
 
 import java.io.IOException;
@@ -17,15 +15,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.stream.Stream;
 
 /**
  * @author zscgrhg
  */
-public class Sputnik {
+public class SputnikMain {
 
 
-    private static final Logger LOGGER = LoggerBuilder.of(Sputnik.class);
+    private static final Logger LOGGER = LoggerBuilder.of(SputnikMain.class);
 
     public static final Properties CONFIG = loadConfig();
 
@@ -43,7 +40,7 @@ public class Sputnik {
     @SneakyThrows
     public static Properties loadConfig() {
         Properties config = new Properties();
-        Optional.ofNullable(Sputnik.class.getClassLoader().getResourceAsStream("sputnik.properties"))
+        Optional.ofNullable(SputnikMain.class.getClassLoader().getResourceAsStream("sputnik.properties"))
                 .ifPresent(p->{
                     try {
                         config.load(p);
@@ -57,25 +54,22 @@ public class Sputnik {
 
     @SneakyThrows
     public synchronized static void loadAgent()  {
-
-
-        if (Main.firstTime) {
-            BMUtil.loadAgent();
-        }
-        if (TtlAgent.firstLoad) {
-            loadTtlAgent();
-        }
+        LOGGER.info("start load agent");
+        loadTtlAgent();
+        BMUtil.loadAgent();
     }
 
     @SneakyThrows
-    public static void loadTtlAgent() {
-        try {
-            VirtualMachine jvm = VirtualMachine.attach(String.valueOf(BMUtil.getPid()));
-            Path agentPath = Paths.get(TtlAgent.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            jvm.loadAgent(agentPath.toString());
-        } catch (AgentInitializationException e) {
-            // this probably indicates that the agent is already installed
-        }
+    public synchronized static void loadTtlAgent() {
+       if(!TtlAgent.isTtlAgentLoaded()){
+           try {
+               VirtualMachine jvm = VirtualMachine.attach(String.valueOf(BMUtil.getPid()));
+               Path agentPath = Paths.get(TtlAgent.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+               jvm.loadAgent(agentPath.toString());
+           } catch (AgentInitializationException e) {
+               // this probably indicates that the agent is already installed
+           }
+       }
     }
 
 }

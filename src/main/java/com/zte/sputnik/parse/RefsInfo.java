@@ -15,6 +15,7 @@ public class RefsInfo {
         FIELD,
         ARG,
         RETURNED,
-        INVOKE_STATIC
+        INVOKE_STATIC,
+        UNRESOLVABLE
     }
 }

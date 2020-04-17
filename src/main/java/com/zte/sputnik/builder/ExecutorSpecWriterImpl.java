@@ -8,6 +8,6 @@ public class ExecutorSpecWriterImpl implements SpecWriter {
 
     @Override
     public void write(Long invocationId) {
-        SPEC_FACTORY.submit(() -> SpecFactory.writeSpec(invocationId));
+        SPEC_FACTORY.submit(() -> SpecBuilder.writeSpec(invocationId,null));
     }
 }

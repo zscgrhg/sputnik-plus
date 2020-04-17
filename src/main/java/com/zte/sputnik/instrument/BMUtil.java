@@ -5,6 +5,7 @@ import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.tools.attach.AgentInitializationException;
+import com.zte.sputnik.SputnikMain;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.util.JsonUtil;
 import lombok.SneakyThrows;
@@ -71,12 +72,19 @@ public class BMUtil {
             LOGGER.debug("agent already loaded!");
             return;
         }
+        String verbose= SputnikMain.CONFIG.getProperty("sputnik.byteman.verbose","false");
+        String debug= SputnikMain.CONFIG.getProperty("sputnik.byteman.debug","false");
+
         Properties p=new Properties();
         p.put("org.jboss.byteman.contrib.bmunit.agent.host",AGENT_HOST);
         p.put("org.jboss.byteman.contrib.bmunit.agent.port",AGENT_PORT);
         p.put("org.jboss.byteman.contrib.bmunit.agent.inhibit",true);
-        p.put("org.jboss.byteman.verbose", "true");
-        p.put("org.jboss.byteman.debug", "true");
+        if("true".equalsIgnoreCase(verbose)){
+            p.put("org.jboss.byteman.verbose", "true");
+        }
+        if("true".equalsIgnoreCase(debug)){
+            p.put("org.jboss.byteman.debug", "true");
+        }
         p.put("org.jboss.byteman.transform.all", "true");
         p.put("org.jboss.byteman.compileToBytecode", "true");
 

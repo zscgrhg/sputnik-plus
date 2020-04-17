@@ -11,7 +11,9 @@ import com.zte.sputnik.trace.Invocation;
 import com.zte.sputnik.trace.TraceReader;
 import com.zte.sputnik.trace.TraceReaderImpl;
 import com.zte.sputnik.util.MustacheUtil;
+import com.zte.sputnik.util.RegexUtils;
 import lombok.SneakyThrows;
+import org.junit.runner.Description;
 import shade.sputnik.org.slf4j.Logger;
 
 
@@ -21,13 +23,14 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-public class SpecFactory {
-    private static final Logger LOGGER = LoggerBuilder.of(SpecFactory.class);
+public class SpecBuilder {
+    private static final Logger LOGGER = LoggerBuilder.of(SpecBuilder.class);
     public static final AtomicLong BUILD_INCR = new AtomicLong(1);
     public static final String FN = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
     public static final String[] NAMES = IntStream.range((int) 'a', ((int) 'z')+1).mapToObj(x ->  Character.toString((char)x)).toArray(String[]::new);
@@ -89,7 +92,9 @@ public class SpecFactory {
                 RefsInfo refPath = child.getRefsInfo();
                 mapInv.putIfAbsent(refPath, new ArrayList<>());
                 mapInv.get(refPath).add(child);
-                if(child.staticInvoke){
+                if (child.staticInvoke
+                        || RefsInfo.RefType.UNRESOLVABLE.equals(Optional
+                        .ofNullable(child.refsInfo).map(RefsInfo::getType).orElse(null))) {
                     staticInvokes.putIfAbsent(child.mid,new HashSet<>());
                     staticInvokes.get(child.mid).add(buildMethodDef(MethodNames.METHOD_NAMES_MAP.get(child.mid)));
                     staticNames.putIfAbsent(child.mid,MethodNames.METHOD_NAMES_MAP.get(child.mid));
@@ -151,12 +156,15 @@ public class SpecFactory {
     private static String buildMethodDef(MethodNames methodNames){
         String name = methodNames.method.getReturnType().getName();
         String signature = methodNames.signature;
-        Class[] params = methodNames.getParametersType();
-        for (int i = 0; i < params.length; i++) {
-            String pn = params[i].getName();
-            signature= signature.replaceFirst("(\\Q"+pn+"\\E)(?=\\s*[,)])", "$1 arg"+i);
+        AtomicInteger atomicInteger=new AtomicInteger(0);
+        int length = methodNames.method.getParameterTypes().length;
+        String defLine=signature;
+        if(length>0){
+            defLine= RegexUtils.replaceAll(signature,"(?=\\s*[,)])",
+                    matcher->" arg"+atomicInteger.getAndIncrement());
         }
-       return name+" "+signature;
+
+       return name+" "+defLine;
     }
 
     private static Map<Long, RecursiveRefsModel> buildRRM(Map<RefsInfo, List<Invocation>> mapInv) {
@@ -204,7 +212,7 @@ public class SpecFactory {
     public static String buildAssert(Invocation invocation) {
 
 
-        return MustacheUtil.format("ret == RETURNED{{0}}", invocation.id);
+        return MustacheUtil.format("ret == RETURNED{{0}}||ret.propertyMatches(RETURNED{{0}})", invocation.id);
     }
 
     public static List<String> buildRecursiveMockBlock(String namespace,List<Invocation> invocationList, Map<Long, RecursiveRefsModel> rrm,int varCounter) {
@@ -225,14 +233,15 @@ public class SpecFactory {
         } else if(RefsInfo.RefType.ARG.equals(refsInfo.type)){
             opened=true;
             ret.add(MustacheUtil.format("argMockDefs.{{0}}=Mock({{1}}){", refsInfo.name, declaredType.getName()));
-        }else if(RefsInfo.RefType.INVOKE_STATIC.equals(refsInfo.type)){
-            opened=true;
+        } else if (RefsInfo.RefType.INVOKE_STATIC.equals(refsInfo.type)
+                || RefsInfo.RefType.UNRESOLVABLE.equals(refsInfo.type)) {
+            opened = true;
             ret.add(MustacheUtil.format("invokeStaticDefs['{{0}}::{{1}}@{{2}}']=Mock(StaticStub{{3}}){",
-                    names.ownerName,names.erased, namespace,invo.mid));
+                    names.ownerName, names.erased, namespace, invo.mid));
         }else if(RefsInfo.RefType.RETURNED.equals(refsInfo.type)){
 
         }else {
-            throw new RuntimeException("never get here!");
+            throw new IllegalStateException("unknown  RefType");
         }
 
         for (Invocation invocation : invocationList) {
@@ -243,7 +252,8 @@ public class SpecFactory {
             int length = argsSplit.length;
             String argsLine = IntStream.range(0, length).mapToObj(i -> "{"
                     +untypePrefix + i + "-> "
-                    +untypePrefix + i + "==INPUTS{{1}}[" + i + "]}")
+                    +untypePrefix + i + "==(INPUTS{{1}}[" + i + "])||"
+                    +untypePrefix + i + ".propertyMatches(INPUTS{{1}}[" + i + "])}")
                     .collect(Collectors.joining(","));
             //String argsLine = IntStream.range(0, length).mapToObj(i -> "INPUTS{{1}}[" + i + "]").collect(Collectors.joining(","));
             String newArgsLine = IntStream.range(0, length).mapToObj(i -> argsSplit[i] +" "+ argNamePrefix + i + "").collect(Collectors.joining(","));
@@ -252,7 +262,7 @@ public class SpecFactory {
                     .flatMap(i -> {
                         String left = argNamePrefix + i + "";
                         String right = MustacheUtil.format("OUTPUTS{{0}}[" + i + "]", invocation.id);
-                        String copy = MustacheUtil.format("{{1}}.copyDirtyPropsTo({{0}})", left, right);//
+                        String copy = MustacheUtil.format("{{1}}.copyDirty({{0}})", left, right);//
                         return Stream.of(copy);
                     }).collect(Collectors.toList());
             //ret.add(MustacheUtil.format("1 * {{0}}(" + argsLine + ") >> RETURNED{{1}} ", invocation.method, invocation.id));
@@ -370,12 +380,59 @@ public class SpecFactory {
             &&!genericSignature.startsWith("java.lang.")) {
                 groovyLine.tokens = MustacheUtil.format("{{0}}.reconstruction(new TypeReference<{{1}}>(){})", groovyLine.tokens, genericSignature);
             } else {
-                groovyLine.tokens = MustacheUtil.format("{{0}} as {{1}}", groovyLine.tokens, Optional.ofNullable(valueType).orElse(genericSignature));
+                groovyLine.tokens = MustacheUtil.format("{{0}} as {{1}}",
+                        groovyLine.tokens,
+                        Optional.ofNullable(valueType)
+                                .map(SpecBuilder::normalizeArrayTypeName)
+                                .orElse(genericSignature));
             }
 
         }
 
         return defs;
+    }
+
+    public static String normalizeArrayTypeName(String typeName){
+        if(!typeName.startsWith("[")){
+            return typeName;
+        }
+        int i=typeName.lastIndexOf("[");
+        StringBuilder sb=new StringBuilder();
+        switch (typeName.charAt(i+1)){
+            case 'B':
+                sb.append("byte");
+                break;
+            case 'C':
+                sb.append("char");
+                break;
+            case 'S':
+                sb.append("short");
+                break;
+            case 'I':
+                sb.append("int");
+                break;
+            case 'J':
+                sb.append("long");
+                break;
+            case 'F':
+                sb.append("float");
+                break;
+            case 'D':
+                sb.append("double");
+                break;
+            case 'Z':
+                sb.append("boolean");
+                break;
+            case 'L':
+                sb.append(typeName.substring(i+2).replaceAll(";+$",""));
+                break;
+            default:
+                throw new IllegalStateException();
+        }
+        for (int j = 0; j <=i ; j++) {
+            sb.append("[]");
+        }
+        return sb.toString();
     }
 
     public static String groovyId(String name){
@@ -399,10 +456,20 @@ public class SpecFactory {
 
 
     @SneakyThrows
-    public static void writeSpec(Long subjectInvocationId) {
+    public static void writeSpec(Long subjectInvocationId, Description description) {
 
 
         SpecModel model = build(subjectInvocationId);
+        model.invocationId=subjectInvocationId;
+        model.title=Optional.ofNullable(description)
+                .map(d->d.getDisplayName())
+                .orElse("");
+        model.tc=Optional.ofNullable(description)
+                .map(d->d.getClassName())
+                .orElse("");
+        model.tm=Optional.ofNullable(description)
+                .map(d->d.getMethodName())
+                .orElse("");
         Path pkg = SputnikConfig.INSTANCE
                 .getSpecOutputsDir()
                 .toPath()
@@ -421,7 +488,7 @@ public class SpecFactory {
         List<Invocation> children = invocation.children;
         for (Invocation child : children) {
             if(child.subject){
-                writeSpec(child.id);
+                writeSpec(child.id,description);
             }
         }
     }

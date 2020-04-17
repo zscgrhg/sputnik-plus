@@ -1,4 +1,4 @@
-package com.zte.sputnik.parse;
+package com.zte.sputnik.trace;
 
 import lombok.Data;
 

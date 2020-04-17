@@ -1,8 +1,7 @@
 package com.zte.sputnik.builder;
 
 import com.alibaba.ttl.TransmittableThreadLocal;
-import com.alibaba.ttl.threadpool.agent.TtlAgent;
-import com.zte.sputnik.Sputnik;
+import com.zte.sputnik.SputnikMain;
 import com.zte.sputnik.instrument.TraceUtil;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.parse.SubjectManager;
@@ -20,7 +19,7 @@ import java.util.stream.Stream;
 public class SputnikUTFactory extends TestWatcher implements SpecWriter {
     private static final Logger LOGGER = LoggerBuilder.of(InvocationContext.class);
 
-    private static   final ThreadLocal<List<Long>> CACHE = new ThreadLocal<>();
+    private static   final TransmittableThreadLocal<List<Long>> CACHE = new TransmittableThreadLocal<>();
 
 
     private  final Map<Class,Set<Field>> subjectFiledInfo=new HashMap<>();
@@ -31,19 +30,7 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
 
     private final Set<Class> trace=new HashSet<>();
 
-    static {
-        if (!TtlAgent.isTtlAgentLoaded()) {
-            LOGGER.debug("load ttl");
-            try {
-                Sputnik.loadAgent();
-                Sputnik.loadTtlAgent();
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
-        }
 
-    }
 
     public SputnikUTFactory addSubject(Class... subject){
         for (Class cls : subject) {
@@ -79,7 +66,7 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
         return this;
     }
 
-    public SputnikUTFactory mockClass(Class... classes){
+    public SputnikUTFactory mockClasses(Class... classes){
         trace.addAll(Stream.of(classes).collect(Collectors.toSet()));
         return this;
     }
@@ -92,7 +79,7 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
         if (invocations != null) {
             for (Long invocation : invocations) {
                 try {
-                    SpecFactory.writeSpec(invocation);
+                    SpecBuilder.writeSpec(invocation,description);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -147,6 +134,13 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
     @Override
     protected void starting(Description description) {
         LOGGER.debug(description.getDisplayName() + " starting");
+        String enableFromConfig = SputnikMain.CONFIG.getProperty("sputnik.enable", "false");
+        String enable=System.getProperty("sputnik.enable",enableFromConfig);
+        if(!"true".equalsIgnoreCase(enable)){
+            super.starting(description);
+            LOGGER.debug("sputnik.enable={}",enableFromConfig);
+            return;
+        }
         SpecWriter.CURRENT.set(this);
 
         parseMockAnno();
@@ -173,10 +167,6 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
     protected void finished(Description description) {
         super.finished(description);
         LOGGER.debug(description.getDisplayName() + " finished");
-        SubjectManager.SUBJECTS.remove();
-        SubjectManager.SUBJECTS_FIELDS.remove();
-        TraceUtil.unload(subjectFiledInfo.keySet());
-        TraceUtil.unload(trace);
         CACHE.remove();
         SpecWriter.CURRENT.remove();
     }

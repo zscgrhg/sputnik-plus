@@ -23,9 +23,13 @@ public class SubjectManager {
     private static final Logger LOGGER
             = LoggerBuilder.of(SubjectManager.class);
     public final Map<Class, Map<String, RefsInfo>> SUBJECT_CLASS_REFS = new ConcurrentHashMap<>();
-    public static final TransmittableThreadLocal<Map<Class, List<Field>>> SUBJECT_CLASS_FIELDS = new TransmittableThreadLocal<>();
-    public static final TransmittableThreadLocal<Class> SUBJECTS=new TransmittableThreadLocal<>();
-    public static final TransmittableThreadLocal<List<Field>> SUBJECTS_FIELDS=new TransmittableThreadLocal<>();
+    public static final TransmittableThreadLocal<Map<Class, List<Field>>>
+            SUBJECT_CLASS_FIELDS = new TransmittableThreadLocal(){
+        @Override
+        protected Object initialValue() {
+            return new ConcurrentHashMap<>();
+        }
+    };
 
 
     private SubjectManager() {
@@ -46,9 +50,7 @@ public class SubjectManager {
     }
 
     public static boolean isSubject(Class clazz) {
-        return Optional.ofNullable(SUBJECT_CLASS_FIELDS.get())
-                .map(m -> m.containsKey(clazz))
-                .orElse(false);
+        return SUBJECT_CLASS_FIELDS.get().containsKey(clazz);
     }
 
     public void parse(Class<?>... classList){

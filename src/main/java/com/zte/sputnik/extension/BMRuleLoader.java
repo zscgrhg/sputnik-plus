@@ -1,13 +1,12 @@
 package com.zte.sputnik.extension;
 
 import com.alibaba.ttl.threadpool.agent.TtlAgent;
-import com.zte.sputnik.Sputnik;
+import com.zte.sputnik.SputnikMain;
 import org.jboss.byteman.contrib.bmunit.*;
 import org.junit.rules.MethodRule;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.Statement;
 
-import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -47,8 +46,8 @@ public class BMRuleLoader implements MethodRule {
                 }).orElse(s);
     }
 
-    static {
-        Sputnik.loadAgent();
-    }
+   /* static {
+        SputnikMain.loadAgent();
+    }*/
 
 }

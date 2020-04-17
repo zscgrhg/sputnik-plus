@@ -1,9 +1,12 @@
 package com.zte.sputnik.extension;
 
 import com.zte.sputnik.lbs.LoggerBuilder;
+import groovy.lang.Closure;
 import org.jboss.byteman.rule.Rule;
+import org.spockframework.mock.runtime.MockInvocation;
 import shade.sputnik.org.slf4j.Logger;
 
+import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,9 +31,27 @@ public class InvokeStaicHelper {
         }
     }
 
-    public boolean hasMethod(String methodSignure) {
-
+    public boolean hasMethod(String methodSignure,Object[] args) {
+        if(args!=null&&args.length>1){
+            if(isMock(args[0])){
+                return false;
+            }
+        }
         return INVOKE_STATIC_TTL.containsKey(methodSignure);
+    }
+
+    public boolean isMock(Object target){
+        try {
+            if(target!=null&&target instanceof Closure){
+                Field delegate = Closure.class.getDeclaredField("delegate");
+                delegate.setAccessible(true);
+                Object obj = delegate.get(target);
+                return obj!=null&&obj instanceof MockInvocation;
+            }
+            return false;
+        } catch (NoSuchFieldException|IllegalAccessException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     public Object getMock(String methodSignure) {

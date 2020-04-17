@@ -3,6 +3,7 @@ package com.zte.sputnik.trace;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.zte.sputnik.config.SputnikConfig;
+import com.zte.sputnik.instrument.MethodNames;
 import com.zte.sputnik.parse.RefsInfo;
 import com.zte.sputnik.parse.SubjectManager;
 import com.zte.sputnik.trace.proxy.ProxyResolver;
@@ -50,6 +51,7 @@ public class Invocation {
      * @{link java.lang.reflect.Method} 唯一标识
      */
     public Long mid;
+    public MethodNames names;
     /**
      * The Refs. 用于解析对象引用关系
      * @see Invocation#saveObjectsRef

@@ -36,7 +36,7 @@ public class SpringProxyResolverImpl implements ProxyResolver {
             return current;
         }
         if (!found && AopUtils.isCglibProxy(candidate)) {
-            throw new RuntimeException("unknown");
+            throw new IllegalStateException("unresolvable cglib proxy"+candidate.getClass());
         }
         return null;
     }

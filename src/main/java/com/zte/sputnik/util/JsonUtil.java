@@ -42,4 +42,9 @@ public class JsonUtil {
     public static <T> T convert(TypeReference<T> tTypeReference, Object data) {
         return MAPPER.convertValue(data,tTypeReference);
     }
+
+    @SneakyThrows
+    public static <T> T convert(Class<T> clazz, Object data) {
+        return MAPPER.convertValue(data,clazz);
+    }
 }

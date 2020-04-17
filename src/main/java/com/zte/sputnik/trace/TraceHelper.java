@@ -32,8 +32,10 @@ public class TraceHelper {
     public void atEntry(Long mid, Object[] args) {
         LOGGER.debug(mid + ",trigger by " + rule.getName());
         Invocation invocation = new Invocation();
-        invocation.mid = mid;
+
         MethodNames names = MethodNames.METHOD_NAMES_MAP.get(mid);
+        invocation.mid = mid;
+        invocation.names=names;
         InvocationContext context = InvocationContext.getCurrent(names);
         if (context!=null&&context.canPush()) {
             Object[] methodArgs = Stream.of(args).skip(1).toArray();

@@ -8,7 +8,6 @@ import com.zte.sputnik.instrument.MethodNames;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.parse.RefsInfo;
 import com.zte.sputnik.parse.SubjectManager;
-import com.zte.sputnik.parse.ValueObjectModel;
 import com.zte.sputnik.util.ClassUtil;
 import lombok.Data;
 import shade.sputnik.org.slf4j.Logger;
@@ -20,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.zte.sputnik.parse.SubjectManager.SUBJECT_CLASS_FIELDS;
@@ -44,7 +42,7 @@ public class InvocationContext {
     /**
      * The constant STAGED.
      */
-    public final static ThreadLocal<Invocation> STAGED = new ThreadLocal<>();
+    public  Invocation STAGED ;
     /**
      * The constant CONTEXT.
      */
@@ -52,11 +50,11 @@ public class InvocationContext {
     /**
      * The constant STACK_THREAD_LOCAL.
      */
-    public final static ThreadLocal<Stack<Invocation>> STACK_THREAD_LOCAL = new ThreadLocal<>();
+    public final   Stack<Invocation> STACK_THREAD_LOCAL = new Stack<>();
     /**
      * The constant ARGS_STACK.
      */
-    public final static ThreadLocal<Stack<Object[]>> ARGS_STACK = new ThreadLocal<>();
+    public final   Stack<Object[]> ARGS_STACK = new Stack<>();
     /**
      * The Entry counter.
      */
@@ -149,24 +147,15 @@ public class InvocationContext {
      * @param originArgs the origin args
      */
     public void push(Invocation invocation, Object[] originArgs) {
-        Stack<Invocation> stack = STACK_THREAD_LOCAL.get();
-        if (stack == null) {
-            stack = new Stack<>();
-            STACK_THREAD_LOCAL.set(stack);
-        }
-        Stack<Object[]> argsStack = ARGS_STACK.get();
-        if (argsStack == null) {
-            argsStack = new Stack<>();
-            ARGS_STACK.set(argsStack);
-        }
-        Object[] argsCopy = Arrays.copyOf(originArgs, originArgs.length);
+
+
 
 
         Invocation prevTTL = PREVIOUS.get();
-        if (prevTTL != null && !checkTheadId(prevTTL) && stack.isEmpty()) {
+        if (prevTTL != null && !checkTheadId(prevTTL) && STACK_THREAD_LOCAL.isEmpty()) {
             //in spawned thread
             LOGGER.debug("stage:" + prevTTL);
-            STAGED.set(prevTTL);
+            STAGED=prevTTL;
         }
 
 
@@ -174,50 +163,27 @@ public class InvocationContext {
         MethodNames names = MethodNames.METHOD_NAMES_MAP.get(invocation.mid);
         if (prev != null) {
             invocation.parent = prev;
-            if (prev.thisObjectSource == invocation.thisObjectSource) {
+            if (invocation.thisObjectSource!=null
+                    &&prev.thisObjectSource == invocation.thisObjectSource) {
                 assert prev.threadId == Thread.currentThread().getId();
                 int andIncrement = prev.stackCounter.incrementAndGet();
                 LOGGER.debug("stackCounter ++ :" + andIncrement);
                 return;
             }
-           if(invocation.staticInvoke){
-               RefsInfo refsInfo =new RefsInfo();
-               refsInfo.declaredType=invocation.clazzThis;
-               refsInfo.type= RefsInfo.RefType.INVOKE_STATIC;
-               refsInfo.name=names.signature;
-               invocation.refsInfo = refsInfo;
-               invocation.declaredClass = refsInfo.declaredType;
-           }else {
-               RefsInfo refsInfo = prev.refs.get(invocation.thisObjectSource);
-               if(refsInfo!=null){
-                   invocation.refsInfo = refsInfo;
-                   invocation.declaredClass = refsInfo.declaredType;
-               }else {
-                   StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-                   StackTraceElement stackTraceElement =
-                           Stream.of(stackTrace).filter(ste -> ste.getClassName().equals(prev.clazzSource.getName())).findFirst().get();
-                   LOGGER.error("Refsinfo lost! A method with return type '{}' at location {} was not tracked!",invocation.clazzSource,stackTraceElement);
-               }
-           }
+            RefsInfo refsInfo=resovle(invocation,prev);
+            invocation.refsInfo=refsInfo;
+            invocation.declaredClass=refsInfo.declaredType;
             prev.getChildren().add(invocation);
         }
-        stack.push(invocation);
-        argsStack.push(argsCopy);
+        STACK_THREAD_LOCAL.push(invocation);
+        Object[] argsCopy = Arrays.copyOf(originArgs, originArgs.length);
+
+        ARGS_STACK.push(argsCopy);
         PREVIOUS.set(invocation);
         map.put(invocation.id, invocation);
 
         ParamModel p = new ParamModel();
-        for (int i = 0; i < argsCopy.length; i++) {
-            Object arg = argsCopy[i];
-            if (arg != null) {
-                Object argSource = Invocation.resolveSource(arg);
-                RefsInfo argRefInfo = invocation.refs.get(argSource);
-                if (argRefInfo != null) {
-                    argsCopy[i] = argRefInfo;
-                    invocation.argsNames.put(i, argRefInfo);
-                }
-            }
-        }
+        replaceUnserializableArgs(invocation,argsCopy);
         p.args = argsCopy;
         p.argsGenericType = invocation.genericArgs;
         p.argsType = ParamModel.valuesTypeOf(argsCopy);
@@ -226,9 +192,13 @@ public class InvocationContext {
         p.invocationId = invocation.id;
         p.name = ParamModel.INPUTS;
         traceWriter.write(p);
+        writeValuesOf(invocation);
+    }
+
+    private void writeValuesOf(Invocation invocation){
         if(invocation.subject&&invocation.thisObjectSource!=null){
             List<Field> fields = Optional.ofNullable(SUBJECT_CLASS_FIELDS.get())
-                    .map(m -> m.get(names.context))
+                    .map(m -> m.get(invocation.names.context))
                     .orElse(new ArrayList<>());
             if(fields!=null){
                 Map<String, ValueObjectModel> values=new HashMap<>();
@@ -249,6 +219,38 @@ public class InvocationContext {
         }
     }
 
+    private void replaceUnserializableArgs(Invocation context,Object[] argsCopy){
+        for (int i = 0; i < argsCopy.length; i++) {
+            Object arg = argsCopy[i];
+            if (arg != null) {
+                Object argSource = Invocation.resolveSource(arg);
+                RefsInfo argRefInfo = context.refs.get(argSource);
+                if (argRefInfo != null) {
+                    argsCopy[i] = argRefInfo;
+                    context.argsNames.put(i, argRefInfo);
+                }
+            }
+        }
+    }
+
+    private RefsInfo resovle(Invocation current,Invocation parent){
+        if(current.staticInvoke){
+            RefsInfo refsInfo =new RefsInfo();
+            refsInfo.declaredType=current.clazzThis;
+            refsInfo.type= RefsInfo.RefType.INVOKE_STATIC;
+            refsInfo.name=current.names.signature;
+            return refsInfo;
+        }else {
+            RefsInfo refsInfo = parent.refs.get(current.thisObjectSource);
+            if(refsInfo!=null){
+                refsInfo=new RefsInfo();
+                refsInfo.type=RefsInfo.RefType.UNRESOLVABLE;
+                refsInfo.declaredType=current.names.context;
+            }
+            return refsInfo;
+        }
+    }
+
     /**
      * Pop.
      *
@@ -256,18 +258,16 @@ public class InvocationContext {
      * @param exception   the exception
      */
     public void pop(Object returnValue, Throwable exception) {
-        Stack<Invocation> stack = STACK_THREAD_LOCAL.get();
-        Invocation last = stack.lastElement();
+
+        Invocation last = STACK_THREAD_LOCAL.lastElement();
         int stackCounter = last.stackCounter.decrementAndGet();
         LOGGER.debug("stackCounter -- :" + stackCounter);
         if (stackCounter > 0) {
             assert last.threadId == Thread.currentThread().getId();
             return;
         }
-        Invocation pop = stack.pop();
-        Object[] originArgs = ARGS_STACK.get().pop();
-        Invocation parent = pop.parent;
-
+        Invocation pop = STACK_THREAD_LOCAL.pop();
+        Object[] originArgs = ARGS_STACK.pop();
 
         //MethodNames names = MethodNames.METHOD_NAMES_MAP.get(pop.mid);
         ParamModel p = new ParamModel();
@@ -280,11 +280,38 @@ public class InvocationContext {
 
         p.returnedGenericType = pop.genericReturned;
         p.thrown = exception;
+        p.name = ParamModel.OUTPUTS;
         if (exception != null) {
             p.exception = exception.getClass().getName();
+        }else {
+            replaceUnserializableReturnValue(pop,p,returnValue);
         }
-        p.name = ParamModel.OUTPUTS;
-        if (exception == null && parent != null && returnValue != null) {
+
+
+        traceWriter.write(p);
+        pop.finished = true;
+        traceWriter.write(pop);
+        if (STACK_THREAD_LOCAL.isEmpty()) {
+            traceWriter.write(this);
+            SPEC_WRITER.write(pop);
+
+            CONTEXT.remove();
+            PREVIOUS.remove();
+            Invocation prevTTL = STAGED;
+            if (prevTTL != null) {
+                STAGED=null;
+                LOGGER.debug("unstaged:" + prevTTL);
+                PREVIOUS.set(prevTTL);
+            }
+        } else {
+            PREVIOUS.set(STACK_THREAD_LOCAL.lastElement());
+        }
+    }
+    private void replaceUnserializableReturnValue(Invocation pop,
+                                                  ParamModel p,
+                                                  Object returnValue){
+        Invocation parent=pop.parent;
+        if (parent != null && returnValue != null) {
             Object returnedSourceObject = Invocation.resolveSource(returnValue);
             boolean traced = SubjectManager.isTraced(returnedSourceObject.getClass())
                     ||SubjectManager.isTraced(pop.returnedType);
@@ -299,29 +326,6 @@ public class InvocationContext {
                 p.returnedType=RefsInfo.class;
                 p.returnedGenericType=RefsInfo.class.getName();
             }
-        }
-        traceWriter.write(p);
-        pop.finished = true;
-        if(pop.subject){
-            traceWriter.write(pop);
-
-        }
-        if (stack.isEmpty()) {
-            traceWriter.write(this);
-            if(pop.subject){
-                SPEC_WRITER.write(pop.id);
-            }
-
-            CONTEXT.remove();
-            PREVIOUS.remove();
-            Invocation prevTTL = STAGED.get();
-            if (prevTTL != null) {
-                STAGED.remove();
-                LOGGER.debug("unstaged:" + prevTTL);
-                PREVIOUS.set(prevTTL);
-            }
-        } else {
-            PREVIOUS.set(stack.lastElement());
         }
     }
 

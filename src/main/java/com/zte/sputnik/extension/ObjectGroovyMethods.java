@@ -17,10 +17,32 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 public class ObjectGroovyMethods {
     private static final Logger LOGGER = LoggerBuilder.of(ObjectGroovyMethods.class);
+
+    public static boolean propertyMatches(Object self, Object target) {
+        if (Objects.equals(self, target)) {
+            LOGGER.debug("arg matches1:{},{}<>{}", true, self, target);
+            return true;
+        }
+        if (self == null
+                || target == null
+                || self instanceof NullObject
+                || target instanceof NullObject) {
+            LOGGER.debug("arg matches2:{},{}<>{}", false, self, target);
+            return false;
+        }
+        if(Objects.equals(self.getClass(),target.getClass())){
+            LOGGER.debug("arg matches3:{},{}<>{}", false, self, target);
+            return false;
+        }
+        boolean equals=Objects.equals(reconstruction(target,self.getClass()),self);
+        LOGGER.debug("arg matches4:{},{}<>{}", equals, self, target);
+        return equals;
+    }
 
     public static <T> T reconstructionFromJson(Object target, TypeReference<T> genericSignature) {
         String json = JsonUtil.write(target);
@@ -30,13 +52,15 @@ public class ObjectGroovyMethods {
     public static <T> T reconstruction(Object target, TypeReference<T> genericSignature) {
         return JsonUtil.convert(genericSignature,target);
     }
-
+    public static <T> T reconstruction(Object target, Class<T> genericSignature) {
+        return JsonUtil.convert(genericSignature,target);
+    }
     public static <V> V reconstruction(Object target, Closure<V> closure) {
         return closure.call(target);
     }
 
 
-    public static <V> void copyDirtyPropsTo(V source, V target) {
+    public static <V> void copyDirty(V source, V target) {
         if (Objects.equals(source, target) || source == null || target == null
                 || source instanceof NullObject || target instanceof NullObject || source instanceof RefsInfo) {
             return;
@@ -48,12 +72,23 @@ public class ObjectGroovyMethods {
                 Object[] s = (Object[]) source;
                 Object[] t = (Object[]) target;
                 for (int i = 0; i < Math.min(s.length, t.length); i++) {
-                    t[i] = s[i];
+                    if(s.length!=t.length){
+                        t[i]=s[i];
+                    }else {
+                        copyDirty(s[i],t[i]);
+                    }
                 }
             } else if (Collection.class.isAssignableFrom(targetClass)) {
                 Collection c = (Collection) target;
-                c.clear();
-                c.addAll((Collection) source);
+                Collection s = (Collection) source;
+                if(c instanceof List && s instanceof List&&c.size()==s.size()){
+                    for (int i = 0; i < c.size(); i++) {
+                        copyDirty(((List) s).get(i),((List) c).get(i));
+                    }
+                }else {
+                    c.clear();
+                    c.addAll((Collection) source);
+                }
             } else {
                 if (Objects.equals(source, target)) {
                     return;

@@ -49,10 +49,6 @@ public class TraceUtil {
         }
         if(isSubject){
             Map<Class, List<Field>> cfs = SubjectManager.SUBJECT_CLASS_FIELDS.get();
-            if(cfs==null){
-                cfs=new HashMap<>();
-                SubjectManager.SUBJECT_CLASS_FIELDS.set(cfs);
-            }
             cfs.put(clazz,Stream.of(fields).collect(Collectors.toList()));
         }
         Set<ScriptTextValue> exist = TRACED.putIfAbsent(clazz, new HashSet<>());

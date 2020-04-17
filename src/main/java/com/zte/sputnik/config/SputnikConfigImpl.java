@@ -1,6 +1,6 @@
 package com.zte.sputnik.config;
 
-import com.zte.sputnik.Sputnik;
+import com.zte.sputnik.SputnikMain;
 import com.zte.sputnik.builder.ExecutorSpecWriterImpl;
 import com.zte.sputnik.builder.NoopSpecWriterImpl;
 import com.zte.sputnik.builder.SpecWriter;
@@ -42,7 +42,7 @@ public class SputnikConfigImpl implements SputnikConfig {
     }
 
     public static String getBaseDir() {
-        return Optional.ofNullable(Sputnik.CONFIG.getProperty("sputnik.dir.base")).orElse("");
+        return Optional.ofNullable(SputnikMain.CONFIG.getProperty("sputnik.dir.base")).orElse("");
     }
 
     @Override
@@ -58,13 +58,13 @@ public class SputnikConfigImpl implements SputnikConfig {
     @Override
     public SpecWriter getSpecWriter() {
         SpecWriter specWriter = Optional.ofNullable(SpecWriter.CURRENT.get())
-                .orElse(new ExecutorSpecWriterImpl());
+                .orElse(new NoopSpecWriterImpl());
         return specWriter;
     }
 
     @Override
     public ProxyResolver getProxyResolver() {
-        ProxyResolver proxyResolver = Optional.ofNullable(Sputnik.CONFIG.getProperty("sputnik.proxy.resolver")).map(s -> {
+        ProxyResolver proxyResolver = Optional.ofNullable(SputnikMain.CONFIG.getProperty("sputnik.proxy.resolver")).map(s -> {
             try {
                 Class<?> res = Class.forName(s);
                 return (ProxyResolver) res.newInstance();
@@ -78,7 +78,7 @@ public class SputnikConfigImpl implements SputnikConfig {
 
     @Override
     public boolean groopByClass() {
-        boolean groopByClass = Optional.ofNullable(Sputnik.CONFIG.getProperty("sputnik.spec.groop-by-class"))
+        boolean groopByClass = Optional.ofNullable(SputnikMain.CONFIG.getProperty("sputnik.spec.groop-by-class"))
                 .map("true"::equalsIgnoreCase).orElse(true);
         return groopByClass;
     }
