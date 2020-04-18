@@ -98,7 +98,7 @@ public class ObjectGroovyMethods {
                     c.addAll((Collection) source);
                 }
             } else {
-                if (!Objects.equals(source, target)) {
+                if (!propertyMatches(source, target)) {
                     BeanCopier beanCopier = BeanCopier.create(target.getClass(), sourceClass, false);
                     beanCopier.copy(source, target, null);
                 }

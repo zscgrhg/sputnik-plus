@@ -272,7 +272,7 @@ public class SpecBuilder {
                         .flatMap(i -> {
                             String left = argNamePrefix + i + "";
                             String right = MustacheUtil.format("OUTPUTS{{0}}[" + i + "]", invocation.id);
-                            String copy = MustacheUtil.format("({{1}}=={{0}})?:{{1}}.copyDirty({{0}})", left, right);//
+                            String copy = MustacheUtil.format("({{1}}=={{0}})||{{1}}.copyDirty({{0}})", left, right);//
                             return Stream.of(copy);
                         }).collect(Collectors.toList());
                 ret.add(closureArgDefLine);
