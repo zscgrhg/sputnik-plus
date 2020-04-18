@@ -33,13 +33,13 @@ public class SpecBuilder {
     private static final Logger LOGGER = LoggerBuilder.of(SpecBuilder.class);
     public static final AtomicLong BUILD_INCR = new AtomicLong(1);
     public static final String FN = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
-    public static final String[] NAMES = IntStream.range((int) 'a', ((int) 'z')+1).mapToObj(x ->  Character.toString((char)x)).toArray(String[]::new);
+    public static final String[] NAMES = IntStream.range((int) 'A', ((int) 'Z')+1).mapToObj(x ->  Character.toString((char)x)).toArray(String[]::new);
     private static TraceReader reader = new TraceReaderImpl();
 
 
     public static String argNameOf(int round){
 
-        StringBuilder builder=new StringBuilder("_");
+        StringBuilder builder=new StringBuilder("_var");
         while (round>0){
             if(round>=16){
                 builder.append(NAMES[15]);
@@ -247,27 +247,42 @@ public class SpecBuilder {
         for (Invocation invocation : invocationList) {
             String untypePrefix = argNameOf(varCounter++);
             String argNamePrefix = argNameOf(varCounter++);
-            String args = invocation.getSignature().replaceAll("^.*\\((.*?)\\)", "$1");
-            String[] argsSplit = Stream.of(args.split(",")).filter(s->!s.trim().isEmpty()).toArray(String[]::new);
-            int length = argsSplit.length;
-            String argsLine = IntStream.range(0, length).mapToObj(i -> "{"
+            String closureInputArgDef=argNameOf(varCounter++);
+
+            String argTypeNames = invocation.getSignature().replaceAll("^.*\\((.*?)\\)", "$1");
+            String[] argTypeNamesSplit = Stream.of(argTypeNames.split(",")).filter(s->!s.trim().isEmpty()).toArray(String[]::new);
+            int length = argTypeNamesSplit.length;
+            String argMatcherLine = IntStream.range(0, length).mapToObj(i -> "{"
                     +untypePrefix + i + "-> "
                     +untypePrefix + i + "==(INPUTS{{1}}[" + i + "])||"
                     +untypePrefix + i + ".propertyMatches(INPUTS{{1}}[" + i + "])}")
                     .collect(Collectors.joining(","));
             //String argsLine = IntStream.range(0, length).mapToObj(i -> "INPUTS{{1}}[" + i + "]").collect(Collectors.joining(","));
-            String newArgsLine = IntStream.range(0, length).mapToObj(i -> argsSplit[i] +" "+ argNamePrefix + i + "").collect(Collectors.joining(","));
-            List<String> copyLine = IntStream.range(0, length)
-                    .boxed()
-                    .flatMap(i -> {
-                        String left = argNamePrefix + i + "";
-                        String right = MustacheUtil.format("OUTPUTS{{0}}[" + i + "]", invocation.id);
-                        String copy = MustacheUtil.format("{{1}}.copyDirty({{0}})", left, right);//
-                        return Stream.of(copy);
-                    }).collect(Collectors.toList());
+            String closureArgDefLine = IntStream.range(0, length)
+                    .mapToObj(i -> argTypeNamesSplit[i] +" "+ argNamePrefix + i + "")
+                    .collect(Collectors.joining(";"));
+            String closureArgAssignLine=IntStream.range(0, length)
+                    .mapToObj(i ->  argNamePrefix + i + "")
+                    .collect(Collectors.joining(","));
+            ret.add(MustacheUtil.format("1 * {{0}}(" + argMatcherLine + ") >> { \n\t" + closureInputArgDef + "->",
+                    invocation.method, invocation.id));
+            if(!closureArgDefLine.isEmpty()){
+                List<String> copyLine = IntStream.range(0, length)
+                        .boxed()
+                        .flatMap(i -> {
+                            String left = argNamePrefix + i + "";
+                            String right = MustacheUtil.format("OUTPUTS{{0}}[" + i + "]", invocation.id);
+                            String copy = MustacheUtil.format("({{1}}=={{0}})?:{{1}}.copyDirty({{0}})", left, right);//
+                            return Stream.of(copy);
+                        }).collect(Collectors.toList());
+                ret.add(closureArgDefLine);
+                ret.add("("+closureArgAssignLine+")="+closureInputArgDef);
+                ret.addAll(copyLine);
+            }
+
+
             //ret.add(MustacheUtil.format("1 * {{0}}(" + argsLine + ") >> RETURNED{{1}} ", invocation.method, invocation.id));
-            ret.add(MustacheUtil.format("1 * {{0}}(" + argsLine + ") >> { \n\t" + (newArgsLine.isEmpty()?argNamePrefix:newArgsLine) + "->", invocation.method, invocation.id));
-            ret.addAll(copyLine);
+
             //ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
             List<RecursiveRefsModel> children = rrm.get(invocation.id).getChildren();
             if(!SubjectManager.isTraced(invocation.returnedType)){

@@ -24,23 +24,31 @@ public class ObjectGroovyMethods {
     private static final Logger LOGGER = LoggerBuilder.of(ObjectGroovyMethods.class);
 
     public static boolean propertyMatches(Object self, Object target) {
-        if (Objects.equals(self, target)) {
+        NullObject nullObject=NullObject.getNullObject();
+        if (nullObject.is(self)&&nullObject.is(target)) {
             LOGGER.debug("arg matches1:{},{}<>{}", true, self, target);
             return true;
         }
-        if (self == null
-                || target == null
-                || self instanceof NullObject
-                || target instanceof NullObject) {
+        if (nullObject.is(self)||nullObject.is(target)) {
             LOGGER.debug("arg matches2:{},{}<>{}", false, self, target);
             return false;
         }
+        if(self instanceof Comparable&&target instanceof Comparable){
+            boolean comp = ((Comparable) self).compareTo(target)==0;
+            LOGGER.debug("arg matches3:{},{}<>{}", comp, self, target);
+            return comp;
+        }
+        if (Objects.equals(self, target)) {
+            LOGGER.debug("arg matches4:{},{}<>{}", true, self, target);
+            return true;
+        }
+
         if(Objects.equals(self.getClass(),target.getClass())){
-            LOGGER.debug("arg matches3:{},{}<>{}", false, self, target);
+            LOGGER.debug("arg matches5:{},{}<>{}", false, self, target);
             return false;
         }
         boolean equals=Objects.equals(reconstruction(target,self.getClass()),self);
-        LOGGER.debug("arg matches4:{},{}<>{}", equals, self, target);
+        LOGGER.debug("arg matches6:{},{}<>{}", equals, self, target);
         return equals;
     }
 
@@ -60,10 +68,10 @@ public class ObjectGroovyMethods {
     }
 
 
-    public static <V> void copyDirty(V source, V target) {
+    public static <V> boolean copyDirty(V source, V target) {
         if (Objects.equals(source, target) || source == null || target == null
                 || source instanceof NullObject || target instanceof NullObject || source instanceof RefsInfo) {
-            return;
+            return true;
         }
         try {
             Class<?> targetClass = target.getClass();
@@ -90,14 +98,16 @@ public class ObjectGroovyMethods {
                     c.addAll((Collection) source);
                 }
             } else {
-                if (Objects.equals(source, target)) {
-                    return;
+                if (!Objects.equals(source, target)) {
+                    BeanCopier beanCopier = BeanCopier.create(target.getClass(), sourceClass, false);
+                    beanCopier.copy(source, target, null);
                 }
-                BeanCopier beanCopier = BeanCopier.create(target.getClass(), sourceClass, false);
-                beanCopier.copy(source, target, null);
+
             }
+            return true;
         } catch (Throwable t) {
             LOGGER.error(t.getMessage());
+            return false;
         }
     }
 
