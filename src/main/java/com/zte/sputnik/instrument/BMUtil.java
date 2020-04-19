@@ -34,7 +34,7 @@ public class BMUtil {
         value.put("inhibitAgentLoad",true);
         value.put("loadDirectory","");
         value.put("resourceLoadDirectory","");
-        value.put("allowAgentConfigUpdate",true);
+        value.put("allowAgentConfigUpdate",false);
         value.put("verbose",verbose());
         value.put("debug",debug());
         value.put("bmunitVerbose",verbose());
