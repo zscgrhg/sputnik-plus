@@ -19,8 +19,8 @@ import java.util.stream.Stream;
 public class SputnikUTFactory extends TestWatcher implements SpecWriter {
     private static final Logger LOGGER = LoggerBuilder.of(InvocationContext.class);
 
-    private static   final TransmittableThreadLocal<List<Long>> CACHE = new TransmittableThreadLocal<>();
-
+    private static   final TransmittableThreadLocal<Map<Long,StageDescription>> CACHE = new TransmittableThreadLocal<>();
+    public static final TransmittableThreadLocal<StageDescription> STAGE_TTL=new TransmittableThreadLocal();
 
     private  final Map<Class,Set<Field>> subjectFiledInfo=new HashMap<>();
     private  final Map<Class,Set<String>> subjectFiledNameInfo=new HashMap<>();
@@ -75,11 +75,11 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
     protected void succeeded(Description description) {
         super.succeeded(description);
         LOGGER.debug(description.getDisplayName() + " succeeded");
-        List<Long> invocations = CACHE.get();
-        if (invocations != null) {
-            for (Long invocation : invocations) {
+        Map<Long,StageDescription> invocations = CACHE.get();
+        if (invocations != null&&!invocations.isEmpty()) {
+            for (Map.Entry<Long, StageDescription> invocation : invocations.entrySet()) {
                 try {
-                    SpecBuilder.writeSpec(invocation,description);
+                    SpecBuilder.writeSpec(invocation.getKey(),invocation.getValue());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -142,6 +142,7 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
             return;
         }
         SpecWriter.CURRENT.set(this);
+        STAGE_TTL.set(new StageDescriptionImpl(description));
 
         parseMockAnno();
         parseValueAnno();
@@ -169,14 +170,15 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
         LOGGER.debug(description.getDisplayName() + " finished");
         CACHE.remove();
         SpecWriter.CURRENT.remove();
+        STAGE_TTL.remove();
     }
 
 
     @Override
     public void write(Long invocationId) {
         if (CACHE.get() == null) {
-            CACHE.set(new ArrayList<>());
+            CACHE.set(new HashMap<>());
         }
-        CACHE.get().add(invocationId);
+        CACHE.get().put(invocationId,STAGE_TTL.get());
     }
 }

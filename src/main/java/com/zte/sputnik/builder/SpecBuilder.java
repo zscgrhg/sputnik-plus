@@ -13,9 +13,7 @@ import com.zte.sputnik.trace.TraceReaderImpl;
 import com.zte.sputnik.util.MustacheUtil;
 import com.zte.sputnik.util.RegexUtils;
 import lombok.SneakyThrows;
-import org.junit.runner.Description;
 import shade.sputnik.org.slf4j.Logger;
-
 
 import java.io.File;
 import java.nio.file.Files;
@@ -33,20 +31,20 @@ public class SpecBuilder {
     private static final Logger LOGGER = LoggerBuilder.of(SpecBuilder.class);
     public static final AtomicLong BUILD_INCR = new AtomicLong(1);
     public static final String FN = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
-    public static final String[] NAMES = IntStream.range((int) 'A', ((int) 'Z')+1).mapToObj(x ->  Character.toString((char)x)).toArray(String[]::new);
+    public static final String[] NAMES = IntStream.range((int) 'A', ((int) 'Z') + 1).mapToObj(x -> Character.toString((char) x)).toArray(String[]::new);
     private static TraceReader reader = new TraceReaderImpl();
 
 
-    public static String argNameOf(int round){
+    public static String argNameOf(int round) {
 
-        StringBuilder builder=new StringBuilder("_var");
-        while (round>0){
-            if(round>=16){
+        StringBuilder builder = new StringBuilder("_var");
+        while (round > 0) {
+            if (round >= 16) {
                 builder.append(NAMES[15]);
-            }else {
-                builder.append(NAMES[round-1]);
+            } else {
+                builder.append(NAMES[round - 1]);
             }
-            round=round>>4;
+            round = round >> 4;
         }
 
         return builder.toString();
@@ -54,8 +52,9 @@ public class SpecBuilder {
 
 
     @SneakyThrows
-    public static SpecModel build(Long subjectInvocationId) {
+    public static SpecModel build(Long subjectInvocationId, StageDescription description) {
         Invocation subjectInvocation = reader.readInvocation(subjectInvocationId);
+
         Class clazz = subjectInvocation.getClazzSource();
         String method = subjectInvocation.getMethod();
         SpecModel specModel = new SpecModel();
@@ -64,18 +63,31 @@ public class SpecBuilder {
         specModel.id = subjectInvocation.id;
         specModel.method = method;
         specModel.fileName = specModel.subject + FN;
-        specModel.className = specModel.fileName + "N" + BUILD_INCR.getAndIncrement() + "SpecTest";
-        specModel.signature=subjectInvocation.signature;
-        specModel.namespace=specModel.pkg+"."+specModel.className;
+
+        if (description != null) {
+            SpecID specID = new SpecID();
+            specID.subject = specModel.subject;
+            specID.signature = specModel.signature;
+            specID.fromClass = description.getTestClass();
+            specID.fromMethod = description.getTestMethod();
+            specID.displayName=description.getDisplayName();
+            specModel.className = specModel.subject + specID.toHashcode() + "SpecTest";
+        } else {
+            specModel.className = specModel.fileName + "N" + BUILD_INCR.getAndIncrement() + "SpecTest";
+        }
+
+        specModel.signature = subjectInvocation.signature;
+        specModel.namespace = specModel.pkg + "." + specModel.className;
         specModel.subjectDecl = MustacheUtil.format("def subject = new {{0}}()", clazz.getName());
+
 
         List<Invocation> children = subjectInvocation.children;
 
         Map<String, List<GroovyLine>> inputs = new HashMap<>();
         Map<String, List<GroovyLine>> outputs = new HashMap<>();
         Map<String, List<GroovyLine>> returned = new HashMap<>();
-        Map<Long,Set<String>> staticInvokes=new HashMap<>();
-        Map<Long,MethodNames> staticNames=new HashMap<>();
+        Map<Long, Set<String>> staticInvokes = new HashMap<>();
+        Map<Long, MethodNames> staticNames = new HashMap<>();
         inputs.put(String.valueOf(subjectInvocation.id), buildArgsLine(reader.readInParam(subjectInvocation.id)));
         JsonNode outParam = reader.readOutParam(subjectInvocation.id);
         outputs.put(String.valueOf(subjectInvocation.id), buildArgsLine(outParam));
@@ -95,9 +107,9 @@ public class SpecBuilder {
                 if (child.staticInvoke
                         || RefsInfo.RefType.UNRESOLVABLE.equals(Optional
                         .ofNullable(child.refsInfo).map(RefsInfo::getType).orElse(null))) {
-                    staticInvokes.putIfAbsent(child.mid,new HashSet<>());
+                    staticInvokes.putIfAbsent(child.mid, new HashSet<>());
                     staticInvokes.get(child.mid).add(buildMethodDef(MethodNames.METHOD_NAMES_MAP.get(child.mid)));
-                    staticNames.putIfAbsent(child.mid,MethodNames.METHOD_NAMES_MAP.get(child.mid));
+                    staticNames.putIfAbsent(child.mid, MethodNames.METHOD_NAMES_MAP.get(child.mid));
                 }
             }
 
@@ -108,7 +120,7 @@ public class SpecBuilder {
                     .filter(e -> !RefsInfo.RefType.RETURNED.equals(e.getKey().type))
                     .flatMap(e ->
                             buildRecursiveMockBlock(specModel.namespace,
-                            e.getValue(), rrm,1).stream()).collect(Collectors.toList());
+                                    e.getValue(), rrm, 1).stream()).collect(Collectors.toList());
 
             specModel.mockBlock = mockBlock;
             specModel.fieldsInitBlock = buildFieldsInitBlock(subjectInvocation);
@@ -118,31 +130,31 @@ public class SpecBuilder {
         specModel.Returned = returned.entrySet();
         specModel.actionDecl = buildWhen(subjectInvocation);
         specModel.assertDecl = buildAssert(subjectInvocation);
-        specModel.staticInvokes=staticInvokes.entrySet();
-        specModel.staticNames=staticNames.entrySet();
+        specModel.staticInvokes = staticInvokes.entrySet();
+        specModel.staticNames = staticNames.entrySet();
         return specModel;
     }
 
-    private static List<String> buildFieldsInitBlock(Invocation subjectInvocation){
-        List<String> ret=new ArrayList<>();
+    private static List<String> buildFieldsInitBlock(Invocation subjectInvocation) {
+        List<String> ret = new ArrayList<>();
         JsonNode values = reader.readValues(subjectInvocation.id);
         Iterator<String> names = values.fieldNames();
-        while (names.hasNext()){
+        while (names.hasNext()) {
             String next = names.next();
             JsonNode vmNode = values.get(next);
             JsonNode value = vmNode.get("value");
-            if(value==null){
+            if (value == null) {
 
-            }else if(value.isTextual()){
-                ret.add(MustacheUtil.format("subject.{{0}}='''{{1}}'''",next,value.asText()));
-            }else if(value.isValueNode()){
-                ret.add(MustacheUtil.format("subject.{{0}}={{1}}",next,value.asText()));
-            }else {
-                ret.add(MustacheUtil.format("subject.{{0}}=",next));
-                String valueClass=vmNode.get("valueClass").asText();
+            } else if (value.isTextual()) {
+                ret.add(MustacheUtil.format("subject.{{0}}='''{{1}}'''", next, value.asText()));
+            } else if (value.isValueNode()) {
+                ret.add(MustacheUtil.format("subject.{{0}}={{1}}", next, value.asText()));
+            } else {
+                ret.add(MustacheUtil.format("subject.{{0}}=", next));
+                String valueClass = vmNode.get("valueClass").asText();
                 String declType = vmNode.get("declType").asText();
                 List<GroovyLine> groovyLines = jsonToGroovyMap(1, null, value, declType, valueClass);
-                endBlock(groovyLines,null);
+                endBlock(groovyLines, null);
                 List<String> codes = groovyLines.stream()
                         .map(gl -> MustacheUtil.formatModel("{{ident}}{{tokens}}{{lineEnd}}", gl))
                         .collect(Collectors.toList());
@@ -153,18 +165,18 @@ public class SpecBuilder {
         return ret;
     }
 
-    private static String buildMethodDef(MethodNames methodNames){
+    private static String buildMethodDef(MethodNames methodNames) {
         String name = methodNames.method.getReturnType().getName();
         String signature = methodNames.signature;
-        AtomicInteger atomicInteger=new AtomicInteger(0);
+        AtomicInteger atomicInteger = new AtomicInteger(0);
         int length = methodNames.method.getParameterTypes().length;
-        String defLine=signature;
-        if(length>0){
-            defLine= RegexUtils.replaceAll(signature,"(?=\\s*[,)])",
-                    matcher->" arg"+atomicInteger.getAndIncrement());
+        String defLine = signature;
+        if (length > 0) {
+            defLine = RegexUtils.replaceAll(signature, "(?=\\s*[,)])",
+                    matcher -> " arg" + atomicInteger.getAndIncrement());
         }
 
-       return name+" "+defLine;
+        return name + " " + defLine;
     }
 
     private static Map<Long, RecursiveRefsModel> buildRRM(Map<RefsInfo, List<Invocation>> mapInv) {
@@ -179,7 +191,7 @@ public class SpecBuilder {
         }
         for (RecursiveRefsModel value : rrm.values()) {
             RefsInfo refsInfo = value.getRefsInfo();
-            if (refsInfo!=null&&RefsInfo.RefType.RETURNED.equals(refsInfo.type)) {
+            if (refsInfo != null && RefsInfo.RefType.RETURNED.equals(refsInfo.type)) {
                 RecursiveRefsModel parent = rrm.get(refsInfo.returnedFrom);
                 parent.getChildren().add(value);
             }
@@ -215,58 +227,58 @@ public class SpecBuilder {
         return MustacheUtil.format("ret == RETURNED{{0}}||ret.propertyMatches(RETURNED{{0}})", invocation.id);
     }
 
-    public static List<String> buildRecursiveMockBlock(String namespace,List<Invocation> invocationList, Map<Long, RecursiveRefsModel> rrm,int varCounter) {
-        if(invocationList==null||invocationList.isEmpty()){
+    public static List<String> buildRecursiveMockBlock(String namespace, List<Invocation> invocationList, Map<Long, RecursiveRefsModel> rrm, int varCounter) {
+        if (invocationList == null || invocationList.isEmpty()) {
             return Collections.emptyList();
         }
-        assert invocationList.stream().map(Invocation::getRefsInfo).distinct().count()==1;
+        assert invocationList.stream().map(Invocation::getRefsInfo).distinct().count() == 1;
 
         List<String> ret = new ArrayList<>();
         Invocation invo = invocationList.get(0);
         MethodNames names = MethodNames.METHOD_NAMES_MAP.get(invo.mid);
         RefsInfo refsInfo = invo.getRefsInfo();
         Class declaredType = refsInfo.declaredType;
-        boolean opened=false;
+        boolean opened = false;
         if (RefsInfo.RefType.FIELD.equals(refsInfo.type)) {
-            opened=true;
+            opened = true;
             ret.add(MustacheUtil.format("subject.{{0}}=Mock({{1}}){", refsInfo.name, declaredType.getName()));
-        } else if(RefsInfo.RefType.ARG.equals(refsInfo.type)){
-            opened=true;
+        } else if (RefsInfo.RefType.ARG.equals(refsInfo.type)) {
+            opened = true;
             ret.add(MustacheUtil.format("argMockDefs.{{0}}=Mock({{1}}){", refsInfo.name, declaredType.getName()));
         } else if (RefsInfo.RefType.INVOKE_STATIC.equals(refsInfo.type)
                 || RefsInfo.RefType.UNRESOLVABLE.equals(refsInfo.type)) {
             opened = true;
             ret.add(MustacheUtil.format("invokeStaticDefs['{{0}}::{{1}}@{{2}}']=Mock(StaticStub{{3}}){",
                     names.ownerName, names.erased, namespace, invo.mid));
-        }else if(RefsInfo.RefType.RETURNED.equals(refsInfo.type)){
+        } else if (RefsInfo.RefType.RETURNED.equals(refsInfo.type)) {
 
-        }else {
+        } else {
             throw new IllegalStateException("unknown  RefType");
         }
 
         for (Invocation invocation : invocationList) {
             String untypePrefix = argNameOf(varCounter++);
             String argNamePrefix = argNameOf(varCounter++);
-            String closureInputArgDef=argNameOf(varCounter++);
+            String closureInputArgDef = argNameOf(varCounter++);
 
             String argTypeNames = invocation.getSignature().replaceAll("^.*\\((.*?)\\)", "$1");
-            String[] argTypeNamesSplit = Stream.of(argTypeNames.split(",")).filter(s->!s.trim().isEmpty()).toArray(String[]::new);
+            String[] argTypeNamesSplit = Stream.of(argTypeNames.split(",")).filter(s -> !s.trim().isEmpty()).toArray(String[]::new);
             int length = argTypeNamesSplit.length;
             String argMatcherLine = IntStream.range(0, length).mapToObj(i -> "{"
-                    +untypePrefix + i + "-> "
-                    +untypePrefix + i + "==(INPUTS{{1}}[" + i + "])||"
-                    +untypePrefix + i + ".propertyMatches(INPUTS{{1}}[" + i + "])}")
+                    + untypePrefix + i + "-> "
+                    + untypePrefix + i + "==(INPUTS{{1}}[" + i + "])||"
+                    + untypePrefix + i + ".propertyMatches(INPUTS{{1}}[" + i + "])}")
                     .collect(Collectors.joining(","));
             //String argsLine = IntStream.range(0, length).mapToObj(i -> "INPUTS{{1}}[" + i + "]").collect(Collectors.joining(","));
             String closureArgDefLine = IntStream.range(0, length)
-                    .mapToObj(i -> argTypeNamesSplit[i] +" "+ argNamePrefix + i + "")
+                    .mapToObj(i -> argTypeNamesSplit[i] + " " + argNamePrefix + i + "")
                     .collect(Collectors.joining(";"));
-            String closureArgAssignLine=IntStream.range(0, length)
-                    .mapToObj(i ->  argNamePrefix + i + "")
+            String closureArgAssignLine = IntStream.range(0, length)
+                    .mapToObj(i -> argNamePrefix + i + "")
                     .collect(Collectors.joining(","));
             ret.add(MustacheUtil.format("1 * {{0}}(" + argMatcherLine + ") >> { \n\t" + closureInputArgDef + "->",
                     invocation.method, invocation.id));
-            if(!closureArgDefLine.isEmpty()){
+            if (!closureArgDefLine.isEmpty()) {
                 List<String> copyLine = IntStream.range(0, length)
                         .boxed()
                         .flatMap(i -> {
@@ -276,7 +288,7 @@ public class SpecBuilder {
                             return Stream.of(copy);
                         }).collect(Collectors.toList());
                 ret.add(closureArgDefLine);
-                ret.add("("+closureArgAssignLine+")="+closureInputArgDef);
+                ret.add("(" + closureArgAssignLine + ")=" + closureInputArgDef);
                 ret.addAll(copyLine);
             }
 
@@ -285,12 +297,12 @@ public class SpecBuilder {
 
             //ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
             List<RecursiveRefsModel> children = rrm.get(invocation.id).getChildren();
-            if(!SubjectManager.isTraced(invocation.returnedType)){
+            if (!SubjectManager.isTraced(invocation.returnedType)) {
                 ret.add(MustacheUtil.format("return RETURNED{{0}} ", invocation.id));
-            }else {
+            } else {
                 ret.add(MustacheUtil.format("return Mock({{0}}){", invocation.returnedType.getName()));
                 List<Invocation> collect = children.stream().map(RecursiveRefsModel::getInvocation).collect(Collectors.toList());
-                ret.addAll(buildRecursiveMockBlock(namespace,collect, rrm,varCounter++));
+                ret.addAll(buildRecursiveMockBlock(namespace, collect, rrm, varCounter++));
                 ret.add("}");
             }
             ret.add("}");
@@ -361,11 +373,11 @@ public class SpecBuilder {
         } else if (value.isTextual()) {
             defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}'''{{1}}'''", groovyId(name), value.asText())));
         } else if (value.isValueNode()) {
-            if(void.class.getName().equals(genericSignature)
-                ||Void.class.getName().equals(genericSignature)){
+            if (void.class.getName().equals(genericSignature)
+                    || Void.class.getName().equals(genericSignature)) {
                 defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}{{1}}", groovyId(name), value.asText())));
-            }else {
-                defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}{{1}} {{#2}}as {{2}}{{/2}}", groovyId(name), value.asText(),genericSignature)));
+            } else {
+                defs.add(new GroovyLine(identStr, MustacheUtil.format("{{#0}}{{0}}:{{/0}}{{1}} {{#2}}as {{2}}{{/2}}", groovyId(name), value.asText(), genericSignature)));
             }
 
         } else {
@@ -389,10 +401,10 @@ public class SpecBuilder {
             } else if (genericSignature.contains("<")) {
                 groovyLine.tokens = MustacheUtil.format("{{0}}.reconstruction(new TypeReference<{{1}}>(){})", groovyLine.tokens, genericSignature);
             } else if (void.class.getName().equals(genericSignature)
-            ||Void.class.getName().equals(genericSignature)) {
+                    || Void.class.getName().equals(genericSignature)) {
                 groovyLine.tokens = MustacheUtil.format("{{0}}", groovyLine.tokens);
             } else if (genericSignature.contains(".")
-            &&!genericSignature.startsWith("java.lang.")) {
+                    && !genericSignature.startsWith("java.lang.")) {
                 groovyLine.tokens = MustacheUtil.format("{{0}}.reconstruction(new TypeReference<{{1}}>(){})", groovyLine.tokens, genericSignature);
             } else {
                 groovyLine.tokens = MustacheUtil.format("{{0}} as {{1}}",
@@ -407,13 +419,13 @@ public class SpecBuilder {
         return defs;
     }
 
-    public static String normalizeArrayTypeName(String typeName){
-        if(!typeName.startsWith("[")){
+    public static String normalizeArrayTypeName(String typeName) {
+        if (!typeName.startsWith("[")) {
             return typeName;
         }
-        int i=typeName.lastIndexOf("[");
-        StringBuilder sb=new StringBuilder();
-        switch (typeName.charAt(i+1)){
+        int i = typeName.lastIndexOf("[");
+        StringBuilder sb = new StringBuilder();
+        switch (typeName.charAt(i + 1)) {
             case 'B':
                 sb.append("byte");
                 break;
@@ -439,28 +451,28 @@ public class SpecBuilder {
                 sb.append("boolean");
                 break;
             case 'L':
-                sb.append(typeName.substring(i+2).replaceAll(";+$",""));
+                sb.append(typeName.substring(i + 2).replaceAll(";+$", ""));
                 break;
             default:
                 throw new IllegalStateException();
         }
-        for (int j = 0; j <=i ; j++) {
+        for (int j = 0; j <= i; j++) {
             sb.append("[]");
         }
         return sb.toString();
     }
 
-    public static String groovyId(String name){
-        if(name==null||javax.lang.model.SourceVersion.isIdentifier(name)){
+    public static String groovyId(String name) {
+        if (name == null || javax.lang.model.SourceVersion.isIdentifier(name)) {
             return name;
         }
-        final char singleQuote=(char)39;
-        final char backslash=(char)92;
-        StringBuilder builder=new StringBuilder();
+        final char singleQuote = (char) 39;
+        final char backslash = (char) 92;
+        StringBuilder builder = new StringBuilder();
         builder.append(singleQuote);
         for (int i = 0; i < name.length(); i++) {
             char c = name.charAt(i);
-            if(c==singleQuote){
+            if (c == singleQuote) {
                 builder.append(backslash);
             }
             builder.append(c);
@@ -471,20 +483,12 @@ public class SpecBuilder {
 
 
     @SneakyThrows
-    public static void writeSpec(Long subjectInvocationId, Description description) {
+    public static void writeSpec(Long subjectInvocationId, StageDescription description) {
 
 
-        SpecModel model = build(subjectInvocationId);
-        model.invocationId=subjectInvocationId;
-        model.title=Optional.ofNullable(description)
-                .map(d->d.getDisplayName())
-                .orElse("");
-        model.tc=Optional.ofNullable(description)
-                .map(d->d.getClassName())
-                .orElse("");
-        model.tm=Optional.ofNullable(description)
-                .map(d->d.getMethodName())
-                .orElse("");
+        SpecModel model = build(subjectInvocationId, description);
+        model.invocationId = subjectInvocationId;
+
         Path pkg = SputnikConfig.INSTANCE
                 .getSpecOutputsDir()
                 .toPath()
@@ -502,8 +506,8 @@ public class SpecBuilder {
         Invocation invocation = reader.readInvocation(subjectInvocationId);
         List<Invocation> children = invocation.children;
         for (Invocation child : children) {
-            if(child.subject){
-                writeSpec(child.id,description);
+            if (child.subject) {
+                writeSpec(child.id, description);
             }
         }
     }
