@@ -142,7 +142,12 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
             return;
         }
         SpecWriter.CURRENT.set(this);
-        STAGE_TTL.set(new StageDescriptionImpl(description));
+
+        String distinct = SputnikMain.CONFIG.getProperty("sputnik.builder.distinct", "false");
+        if("false".equalsIgnoreCase(distinct)){
+            STAGE_TTL.set(new StageDescriptionImpl(description));
+        }
+
 
         parseMockAnno();
         parseValueAnno();

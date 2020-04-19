@@ -62,7 +62,8 @@ public class SpecBuilder {
         specModel.subject = clazz.getSimpleName();
         specModel.id = subjectInvocation.id;
         specModel.method = method;
-        specModel.fileName = specModel.subject + FN;
+        String randomFileName=specModel.subject + FN;
+
 
         if (description != null) {
             SpecID specID = new SpecID();
@@ -77,7 +78,7 @@ public class SpecBuilder {
             specModel.tm=description.getTestMethod();
             specModel.title=description.getDisplayName();
         } else {
-            specModel.className = specModel.fileName + "N" + BUILD_INCR.getAndIncrement() + "SpecTest";
+            specModel.className = randomFileName + "N" + BUILD_INCR.getAndIncrement() + "SpecTest";
         }
 
         specModel.signature = subjectInvocation.signature;

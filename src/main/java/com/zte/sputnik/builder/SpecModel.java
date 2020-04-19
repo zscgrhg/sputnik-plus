@@ -16,7 +16,6 @@ public class SpecModel {
     Long invocationId;
     Date now=new Date();
     String className;
-    String fileName;
     String subject;
     String method;
     String signature;
