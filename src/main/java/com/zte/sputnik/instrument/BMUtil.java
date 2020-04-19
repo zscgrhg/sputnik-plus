@@ -9,14 +9,12 @@ import com.zte.sputnik.SputnikMain;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.util.JsonUtil;
 import lombok.SneakyThrows;
-
 import org.jboss.byteman.agent.install.Install;
 import org.jboss.byteman.agent.submit.ScriptText;
 import org.jboss.byteman.agent.submit.Submit;
 import org.jboss.byteman.contrib.bmunit.BMUnitConfig;
 import org.jboss.byteman.contrib.bmunit.BMUnitConfigState;
 import shade.sputnik.org.slf4j.Logger;
-
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -37,9 +35,9 @@ public class BMUtil {
         value.put("loadDirectory","");
         value.put("resourceLoadDirectory","");
         value.put("allowAgentConfigUpdate",true);
-        value.put("verbose",true);
-        value.put("debug",true);
-        value.put("bmunitVerbose",true);
+        value.put("verbose",verbose());
+        value.put("debug",debug());
+        value.put("bmunitVerbose",verbose());
         value.put("policy",false);
         value.put("dumpGeneratedClasses",false);
         value.put("dumpGeneratedClassesDirectory","");
@@ -67,22 +65,30 @@ public class BMUtil {
         return pid;
     }
 
+    public static boolean verbose(){
+        String verbose= SputnikMain.CONFIG.getProperty("sputnik.byteman.verbose","false");
+        return "true".equalsIgnoreCase(verbose);
+    }
+    public static boolean debug(){
+        String debug= SputnikMain.CONFIG.getProperty("sputnik.byteman.debug","false");
+        return "true".equalsIgnoreCase(debug);
+    }
+
     public static void loadAgent() throws Exception {
         if(Install.isAgentAttached(Integer.toString(getPid()))){
             LOGGER.debug("agent already loaded!");
             return;
         }
-        String verbose= SputnikMain.CONFIG.getProperty("sputnik.byteman.verbose","false");
-        String debug= SputnikMain.CONFIG.getProperty("sputnik.byteman.debug","false");
+
 
         Properties p=new Properties();
         p.put("org.jboss.byteman.contrib.bmunit.agent.host",AGENT_HOST);
         p.put("org.jboss.byteman.contrib.bmunit.agent.port",AGENT_PORT);
         p.put("org.jboss.byteman.contrib.bmunit.agent.inhibit",true);
-        if("true".equalsIgnoreCase(verbose)){
+        if(verbose()){
             p.put("org.jboss.byteman.verbose", "true");
         }
-        if("true".equalsIgnoreCase(debug)){
+        if(debug()){
             p.put("org.jboss.byteman.debug", "true");
         }
         p.put("org.jboss.byteman.transform.all", "true");
