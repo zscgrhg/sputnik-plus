@@ -71,7 +71,11 @@ public class SpecBuilder {
             specID.fromClass = description.getTestClass();
             specID.fromMethod = description.getTestMethod();
             specID.displayName=description.getDisplayName();
+            specID.uniqueId=description.getUniqueId();
             specModel.className = specModel.subject + specID.toHashcode() + "SpecTest";
+            specModel.tc=description.getTestClass();
+            specModel.tm=description.getTestMethod();
+            specModel.title=description.getDisplayName();
         } else {
             specModel.className = specModel.fileName + "N" + BUILD_INCR.getAndIncrement() + "SpecTest";
         }

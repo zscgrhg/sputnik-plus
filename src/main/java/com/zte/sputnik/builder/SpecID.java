@@ -9,6 +9,7 @@ public class SpecID {
     String fromClass;
     String fromMethod;
     String displayName;
+    String uniqueId;
     public String toHashcode(){
         int hashCode = this.hashCode();
         if(hashCode>=0){

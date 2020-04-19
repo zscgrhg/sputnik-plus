@@ -23,4 +23,9 @@ public class StageDescriptionImpl implements StageDescription {
     public String getDisplayName() {
         return this.description.getDisplayName();
     }
+
+    @Override
+    public String getUniqueId() {
+        return Integer.toHexString(this.description.hashCode());
+    }
 }

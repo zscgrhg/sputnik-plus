@@ -5,4 +5,5 @@ public interface StageDescription {
 
     String getTestMethod();
     String getDisplayName();
+    String getUniqueId();
 }
