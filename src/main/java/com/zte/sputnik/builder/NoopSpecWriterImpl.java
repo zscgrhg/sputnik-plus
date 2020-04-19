@@ -8,6 +8,6 @@ public class NoopSpecWriterImpl implements SpecWriter {
 
     @Override
     public void write(Long invocationId) {
-        LOGGER.debug("write spec:{}", invocationId);
+        LOGGER.debug("write spec(noop):{}", invocationId);
     }
 }

@@ -11,7 +11,6 @@ import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.ToString;
 
-
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
@@ -34,110 +33,61 @@ import java.util.concurrent.atomic.AtomicLong;
         "children",
 })
 public class Invocation {
-    /**
-     * ID生成器，作为一次方法调用的唯一标识
-     */
+
     public static final AtomicLong INVOCATION_INCR = new AtomicLong(1);
 
-    /**
-     * The Id.
-     */
+
     public final Long id = INVOCATION_INCR.getAndIncrement();
-    /**
-     * 调用方法的线程ID
-     */
+
     public final long threadId = Thread.currentThread().getId();
-    /**
-     * @{link java.lang.reflect.Method} 唯一标识
-     */
+
     public Long mid;
     @JsonIgnore
     public MethodNames names;
-    /**
-     * The Refs. 用于解析对象引用关系
-     * @see Invocation#saveObjectsRef
-     */
+
     @JsonIgnore
     public final Map<Object, RefsInfo> refs = new HashMap<>();
-    /**
-     * The Children.
-     */
+
     public final List<Invocation> children = new CopyOnWriteArrayList<>();
-    /**
-     * The This object.
-     */
+
     @JsonIgnore
     public Object thisObject;
-    /**
-     * The This object source.
-     */
+
     @JsonIgnore
     public Object thisObjectSource;
-    /**
-     * The Args names.
-     */
+
     public final Map<Integer, RefsInfo> argsNames = new HashMap<>();
 
-    /**
-     * The Method.
-     */
+
     public String method;
-    /**
-     * The Signature.
-     */
+
     public String signature;
-    /**
-     * The Stack counter.
-     */
+
     public final AtomicInteger stackCounter = new AtomicInteger(1);
 
-    /**
-     * The Refs info.
-     */
+
     public RefsInfo refsInfo;
-    /**
-     * The Declared class.
-     */
+
     public Class declaredClass;
-    /**
-     * The Static invoke.
-     */
+
     public boolean staticInvoke = false;
-    /**
-     * The Subject.
-     */
+
     public boolean subject = false;
-    /**
-     * The Finished.
-     */
+
     public volatile boolean finished = false;
-    /**
-     * The Generic returned.
-     */
+
     public String genericReturned;
-    /**
-     * The Generic args.
-     */
+
     public String[] genericArgs;
-    /**
-     * The Clazz source.
-     */
+
     public Class clazzSource;
-    /**
-     * The Clazz this.
-     */
+
     public Class clazzThis;
-    /**
-     * The Args type.
-     */
+
     public Class[] argsType;
-    /**
-     * The Returned type.
-     */
+
     public Class returnedType;
-    /**
-     * The Parent.
-     */
+
     @JsonIgnore
     Invocation parent;
 
@@ -158,12 +108,7 @@ public class Invocation {
         return proxy;
     }
 
-    /**
-     * Save objects ref.
-     *
-     * @param methodSignure the method signure
-     * @param args          the args
-     */
+
     @SneakyThrows
     public void saveObjectsRef(String methodSignure, Object[] args) {
         try {

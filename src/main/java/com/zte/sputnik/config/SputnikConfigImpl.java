@@ -1,14 +1,12 @@
 package com.zte.sputnik.config;
 
 import com.zte.sputnik.SputnikMain;
-import com.zte.sputnik.builder.ExecutorSpecWriterImpl;
 import com.zte.sputnik.builder.NoopSpecWriterImpl;
 import com.zte.sputnik.builder.SpecWriter;
 import com.zte.sputnik.trace.TraceWriterImpl;
 import com.zte.sputnik.trace.proxy.DefaultProxyResolverImpl;
 import com.zte.sputnik.trace.proxy.ProxyResolver;
 import lombok.SneakyThrows;
-
 
 import java.io.File;
 import java.nio.file.Paths;

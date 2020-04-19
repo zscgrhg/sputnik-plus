@@ -12,78 +12,47 @@ import com.zte.sputnik.util.ClassUtil;
 import lombok.Data;
 import shade.sputnik.org.slf4j.Logger;
 
-
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.zte.sputnik.parse.SubjectManager.SUBJECT_CLASS_FIELDS;
 
-/**
- * The type Invocation context.
- */
+
 @Data
 public class InvocationContext {
     private static final Logger LOGGER = LoggerBuilder.of(InvocationContext.class);
     private static final SpecWriter SPEC_WRITER = SputnikConfig.INSTANCE.getSpecWriter();
 
-    /**
-     * The constant PREVIOUS.
-     */
+
     public final static TransmittableThreadLocal<Invocation> PREVIOUS = new TransmittableThreadLocal<>();
-    /**
-     * The constant CXT_INCR.
-     */
+
     public static final AtomicLong CXT_INCR = new AtomicLong(1);
-    /**
-     * The constant STAGED.
-     */
+
     public  Invocation STAGED ;
-    /**
-     * The constant CONTEXT.
-     */
+
     public final static ThreadLocal<InvocationContext> CONTEXT = new ThreadLocal<>();
-    /**
-     * The constant STACK_THREAD_LOCAL.
-     */
+
     public final   Stack<Invocation> STACK_THREAD_LOCAL = new Stack<>();
-    /**
-     * The constant ARGS_STACK.
-     */
+
     public final   Stack<Object[]> ARGS_STACK = new Stack<>();
-    /**
-     * The Entry counter.
-     */
+
     public final AtomicInteger ENTRY_COUNTER = new AtomicInteger(Integer.MIN_VALUE);
-    /**
-     * The Exit counter.
-     */
+
     public final AtomicInteger EXIT_COUNTER = new AtomicInteger(Integer.MAX_VALUE);
 
-    /**
-     * The Id.
-     */
+
     public final Long id = CXT_INCR.getAndIncrement();
-    /**
-     * The Map.
-     */
+
     @JsonIgnore
     public final Map<Long, Invocation> map = new ConcurrentHashMap<>();
-    /**
-     * The Trace writer.
-     */
+
     final TraceWriter traceWriter = new TraceWriterImpl();
 
-    /**
-     * Gets current.
-     *
-     * @param create the create
-     * @return the current
-     */
+
     public static InvocationContext getCurrent(boolean create) {
         InvocationContext current = CONTEXT.get();
         if (create && current == null) {
@@ -140,12 +109,7 @@ public class InvocationContext {
         return success;
     }
 
-    /**
-     * Push.
-     *
-     * @param invocation the invocation
-     * @param originArgs the origin args
-     */
+
     public void push(Invocation invocation, Object[] originArgs) {
 
 
@@ -251,12 +215,7 @@ public class InvocationContext {
         }
     }
 
-    /**
-     * Pop.
-     *
-     * @param returnValue the return value
-     * @param exception   the exception
-     */
+
     public void pop(Object returnValue, Throwable exception) {
 
         Invocation last = STACK_THREAD_LOCAL.lastElement();
@@ -329,11 +288,7 @@ public class InvocationContext {
         }
     }
 
-    /**
-     * Gets nodes.
-     *
-     * @return the nodes
-     */
+
     public List<Invocation> getNodes() {
         List<Invocation> root = map.values().stream()
                 .filter(inv->inv.parent==null)

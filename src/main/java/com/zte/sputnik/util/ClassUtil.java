@@ -13,9 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
-/**
- * The type Class util.
- */
+
 public class ClassUtil {
     /**
      * 获取参数化类型实例的类型信息
