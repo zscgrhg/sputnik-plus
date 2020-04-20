@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -46,7 +47,7 @@ public class Invocation {
     public MethodNames names;
 
     @JsonIgnore
-    public final Map<Object, RefsInfo> refs = new HashMap<>();
+    public final Map<Object, RefsInfo> refs = new ConcurrentHashMap<>();
 
     public final List<Invocation> children = new CopyOnWriteArrayList<>();
 
@@ -56,7 +57,7 @@ public class Invocation {
     @JsonIgnore
     public Object thisObjectSource;
 
-    public final Map<Integer, RefsInfo> argsNames = new HashMap<>();
+    public final Map<Integer, RefsInfo> argsNames = new ConcurrentHashMap<>();
 
 
     public String method;

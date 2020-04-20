@@ -18,7 +18,7 @@ import java.util.Properties;
 
 public class SputnikConfigImpl implements SputnikConfig {
     public static final File workspace = new File(getBaseDir()).toPath().resolve("data").resolve(ymdHmsOfNow()).toFile();
-    public static final File specDir = Paths.get(getBaseDir()).resolve("src\\test\\groovy\\")
+    public static final File specDir = Paths.get(getBaseDir()).resolve(getSpecDir())
             .toFile();
 
     static {
@@ -41,6 +41,10 @@ public class SputnikConfigImpl implements SputnikConfig {
 
     public static String getBaseDir() {
         return Optional.ofNullable(SputnikMain.CONFIG.getProperty("sputnik.dir.base")).orElse("");
+    }
+
+    public static String getSpecDir() {
+        return  Optional.ofNullable(SputnikMain.CONFIG.getProperty("sputnik.dir.spec")).orElse("src/test/groovy");
     }
 
     @Override

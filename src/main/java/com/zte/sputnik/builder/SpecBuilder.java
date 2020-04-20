@@ -307,7 +307,7 @@ public class SpecBuilder {
             } else {
                 ret.add(MustacheUtil.format("return Mock({{0}}){", invocation.returnedType.getName()));
                 List<Invocation> collect = children.stream().map(RecursiveRefsModel::getInvocation).collect(Collectors.toList());
-                ret.addAll(buildRecursiveMockBlock(namespace, collect, rrm, varCounter++));
+                ret.addAll(buildRecursiveMockBlock(namespace, collect, rrm, varCounter+16));
                 ret.add("}");
             }
             ret.add("}");
