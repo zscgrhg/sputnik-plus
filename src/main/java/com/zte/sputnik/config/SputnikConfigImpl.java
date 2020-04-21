@@ -44,7 +44,7 @@ public class SputnikConfigImpl implements SputnikConfig {
     }
 
     public static String getSpecDir() {
-        return  Optional.ofNullable(SputnikMain.CONFIG.getProperty("sputnik.dir.spec")).orElse("src/test/groovy");
+        return  Optional.ofNullable(SputnikMain.CONFIG.getProperty("sputnik.dir.spec")).orElse("src/sputnik/groovy");
     }
 
     @Override
