@@ -33,7 +33,7 @@ public class SpecBuilder {
     public static final String FN = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
     public static final String[] NAMES = IntStream.range((int) 'A', ((int) 'Z') + 1).mapToObj(x -> Character.toString((char) x)).toArray(String[]::new);
     private static TraceReader reader = new TraceReaderImpl();
-
+    public static final Map<String,Boolean> SPEC_WRITER_BLOCK =Collections.synchronizedMap(new WeakHashMap<String,Boolean>());
 
     public static String argNameOf(int round) {
 
@@ -71,12 +71,13 @@ public class SpecBuilder {
             specID.signature = specModel.signature;
             specID.fromClass = description.getTestClass();
             specID.fromMethod = description.getTestMethod();
-            specID.displayName=description.getDisplayName();
-            specID.uniqueId=description.getUniqueId();
-            specModel.className = specModel.subject + specID.toHashcode() + "SpecTest";
-            specModel.tc=description.getTestClass();
-            specModel.tm=description.getTestMethod();
-            specModel.title=description.getDisplayName();
+            specID.displayName = description.getDisplayName();
+            specID.uniqueId = description.getUniqueId();
+            String hashcode = specID.toHashcode();
+            specModel.className = specModel.subject + "S" + hashcode + "SpecTest";
+            specModel.tc = description.getTestClass();
+            specModel.tm = description.getTestMethod();
+            specModel.title = description.getDisplayName();
         } else {
             specModel.className = randomFileName + "N" + BUILD_INCR.getAndIncrement() + "SpecTest";
         }
@@ -489,9 +490,11 @@ public class SpecBuilder {
 
     @SneakyThrows
     public static void writeSpec(Long subjectInvocationId, StageDescription description) {
-
-
         SpecModel model = build(subjectInvocationId, description);
+
+        if (SPEC_WRITER_BLOCK.putIfAbsent(model.className, true) != null) {
+            return;
+        }
         model.invocationId = subjectInvocationId;
 
         Path pkg = SputnikConfig.INSTANCE
@@ -506,7 +509,8 @@ public class SpecBuilder {
         Path resolve = pkg.resolve(model.className + ".groovy");
         LOGGER.debug("write :" + resolve.toString());
         Files.write(resolve,
-                specText.getBytes("UTF-8"), StandardOpenOption.CREATE);
+                specText.getBytes("UTF-8"),
+                StandardOpenOption.CREATE_NEW);
 
         Invocation invocation = reader.readInvocation(subjectInvocationId);
         List<Invocation> children = invocation.children;
@@ -515,5 +519,6 @@ public class SpecBuilder {
                 writeSpec(child.id, description);
             }
         }
+
     }
 }

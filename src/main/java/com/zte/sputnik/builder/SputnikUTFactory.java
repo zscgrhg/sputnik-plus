@@ -165,7 +165,6 @@ public class SputnikUTFactory extends TestWatcher implements SpecWriter {
             SubjectManager.getInstance().parse(clazz);
             TraceUtil.traceInvocation(clazz,false);
         }
-
         super.starting(description);
     }
 
