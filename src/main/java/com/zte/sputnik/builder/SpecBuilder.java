@@ -33,7 +33,7 @@ public class SpecBuilder {
     public static final String FN = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
     public static final String[] NAMES = IntStream.range((int) 'A', ((int) 'Z') + 1).mapToObj(x -> Character.toString((char) x)).toArray(String[]::new);
     private static TraceReader reader = new TraceReaderImpl();
-    public static final Map<String,Boolean> SPEC_WRITER_BLOCK =Collections.synchronizedMap(new WeakHashMap<String,Boolean>());
+
 
     public static String argNameOf(int round) {
 
@@ -492,9 +492,7 @@ public class SpecBuilder {
     public static void writeSpec(Long subjectInvocationId, StageDescription description) {
         SpecModel model = build(subjectInvocationId, description);
 
-        if (SPEC_WRITER_BLOCK.putIfAbsent(model.className, true) != null) {
-            return;
-        }
+
         model.invocationId = subjectInvocationId;
 
         Path pkg = SputnikConfig.INSTANCE
@@ -507,7 +505,11 @@ public class SpecBuilder {
         }
         String specText = MustacheUtil.render("btm/spec.mustache", model);
         Path resolve = pkg.resolve(model.className + ".groovy");
+        if(resolve.toFile().exists()){
+            resolve.toFile().delete();
+        }
         LOGGER.debug("write :" + resolve.toString());
+
         Files.write(resolve,
                 specText.getBytes("UTF-8"),
                 StandardOpenOption.CREATE_NEW);
