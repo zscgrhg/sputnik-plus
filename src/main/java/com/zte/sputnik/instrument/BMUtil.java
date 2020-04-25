@@ -9,6 +9,7 @@ import com.zte.sputnik.SputnikMain;
 import com.zte.sputnik.lbs.LoggerBuilder;
 import com.zte.sputnik.util.JsonUtil;
 import lombok.SneakyThrows;
+import org.jboss.byteman.agent.Main;
 import org.jboss.byteman.agent.install.Install;
 import org.jboss.byteman.agent.submit.ScriptText;
 import org.jboss.byteman.agent.submit.Submit;
@@ -18,6 +19,8 @@ import shade.sputnik.org.slf4j.Logger;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class BMUtil {
@@ -80,8 +83,9 @@ public class BMUtil {
             return;
         }
 
-
+        Path agentPath = Paths.get(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
         Properties p=new Properties();
+        //p.put("org.jboss.byteman.home",agentPath.getParent().toString());
         p.put("org.jboss.byteman.contrib.bmunit.agent.host",AGENT_HOST);
         p.put("org.jboss.byteman.contrib.bmunit.agent.port",AGENT_PORT);
         p.put("org.jboss.byteman.contrib.bmunit.agent.inhibit",true);
@@ -108,7 +112,7 @@ public class BMUtil {
             for (String key : properties.stringPropertyNames()) {
                 proparray[i++] = key + "=" + properties.getProperty(key);
             }
-            Install.install(id, true, false, getHost(), getPort(), proparray);
+            BMInstall.install(id, true, false, getHost(), getPort(), proparray);
             LOGGER.debug("bm:agent successfully installed at pid {} port {}",AGENT_HOST,AGENT_PORT);
             submit.setSystemProperties(properties);
             BMUnitConfigState.pushConfigurationState(DEFAULT_CONFIG,(Class)null);
